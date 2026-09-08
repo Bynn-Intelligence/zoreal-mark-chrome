@@ -1,0 +1,39 @@
+{
+  "name": "zoreal-mark-chrome",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ZOREAL Mark for Chrome: verify that a live, chip-verified human vouched for what you are reading, and sign what you post.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bynn-Intelligence/zoreal-mark-chrome.git"
+  },
+  "homepage": "https://zoreal.com",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "mock": "node dev/mock/server.mjs",
+    "icons": "node scripts/make-icons.mjs && node scripts/make-lucide.mjs",
+    "zip": "cd dist && zip -r ../zoreal-mark-chrome.zip . -x '.*'"
+  },
+  "dependencies": {
+    "@zoreal/mark-verify": "^0.1.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.7.1",
+    "@types/chrome": "^0.2.9",
+    "@types/node": "^22.0.0",
+    "@types/qrcode": "^1.5.5",
+    "lucide-static": "^0.560.0",
+    "typescript": "^5.7.0",
+    "vite": "^8.0.0",
+    "vitest": "^5.0.0"
+  }
+}

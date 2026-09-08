@@ -1,0 +1,156 @@
+import { PRODUCTION_ANCHORS, verifyMark, type TrustAnchors, type VerifyResult } from '@zoreal/mark-verify';
+import { RecordService, clearRecordCache } from '../shared/api.js';
+import type { MarkSummary, Request, TabState } from '../shared/messages.js';
+import { isLocalDev, loadSettings, saveSettings } from '../shared/settings.js';
+
+/**
+ * The service worker. Verification runs here and only here, so a page has no
+ * way to influence it: the content script sends the text it found and the id,
+ * the worker fetches the record, runs the verifier against the pinned roots,
+ * and returns the verdict. Per-tab state feeds the toolbar badge and the popup.
+ */
+
+const tabs = new Map<number, TabState>();
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({ id: 'zoreal-sign', title: 'Sign this with ZOREAL Mark', contexts: ['editable'] });
+});
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === 'zoreal-sign') void openPopup();
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => tabs.delete(tabId));
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status === 'loading') {
+    tabs.delete(tabId);
+    void chrome.action.setBadgeText({ tabId, text: '' });
+  }
+});
+
+chrome.runtime.onMessage.addListener((msg: Request, sender, sendResponse) => {
+  handle(msg, sender).then(sendResponse, (e) => sendResponse({ error: e instanceof Error ? e.message : String(e) }));
+  return true;
+});
+
+async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promise<unknown> {
+  switch (msg.type) {
+    case 'verify': {
+      const tabId = sender.tab?.id;
+      const results: MarkSummary[] = [];
+      for (const m of msg.marks) results.push(await verifyOne(m, msg.pageUrl));
+      if (tabId !== undefined) {
+        const prev = tabs.get(tabId);
+        const merged = mergeMarks(prev?.marks ?? [], results);
+        const state: TabState = { url: msg.pageUrl, marks: merged, page: prev?.page, updatedAt: Date.now() };
+        tabs.set(tabId, state);
+        await updateBadge(tabId, state);
+      }
+      return { results };
+    }
+    case 'verifyPage': {
+      const tabId = sender.tab?.id;
+      const page = await verifyOne({ marker: 'signed', text: msg.text, id: msg.id }, msg.pageUrl);
+      if (tabId !== undefined) {
+        const prev = tabs.get(tabId);
+        const state: TabState = { url: msg.pageUrl, marks: prev?.marks ?? [], page, updatedAt: Date.now() };
+        tabs.set(tabId, state);
+        await updateBadge(tabId, state);
+      }
+      return { result: page };
+    }
+    case 'tabState': {
+      const tabId = msg.tabId ?? (await activeTabId());
+      return tabId === undefined ? null : (tabs.get(tabId) ?? null);
+    }
+    case 'openPopupForSigning':
+      return { opened: await openPopup() };
+    case 'createOrder': {
+      const s = await loadSettings();
+      return new RecordService(s.baseUrl).createOrder(msg.body);
+    }
+    case 'pollOrder': {
+      const s = await loadSettings();
+      return new RecordService(s.baseUrl).pollOrder(msg.order);
+    }
+    case 'getSettings':
+      return loadSettings();
+    case 'saveSettings':
+      await saveSettings(msg.settings);
+      await clearRecordCache();
+      return { ok: true };
+    case 'clearCache':
+      await clearRecordCache();
+      return { ok: true };
+  }
+}
+
+async function verifyOne(m: { marker: 'signed' | 'delegated'; text: string; id: string }, pageUrl: string): Promise<MarkSummary> {
+  const settings = await loadSettings();
+  const service = new RecordService(settings.baseUrl);
+  const anchors = await anchorsFor(settings.baseUrl, service);
+  const result: VerifyResult = await verifyMark(
+    { marker: m.marker, text: m.text, id: m.id },
+    { fetchRecord: (id) => service.fetchRecord(id), anchors, pageUrl },
+  );
+  if (result.verdict === 'verified_other_page' && settings.sightings) {
+    void service.reportSighting(m.id, pageUrl);
+  }
+  const { record: _record, ...summary } = result;
+  return { ...summary, id: m.id, marker: m.marker };
+}
+
+/**
+ * Production pins the roots compiled into the verifier and never fetches
+ * them. The one exception is a mock record server on localhost, which serves
+ * fixture records under fixture roots; those are fetched from it, and only
+ * when the configured origin is localhost. A production origin can never
+ * reach this branch.
+ */
+let devAnchors: TrustAnchors | undefined;
+async function anchorsFor(baseUrl: string, service: RecordService): Promise<TrustAnchors> {
+  if (!isLocalDev(baseUrl)) return PRODUCTION_ANCHORS;
+  if (!devAnchors) {
+    try {
+      devAnchors = (await service.fetchDevAnchors()) as TrustAnchors;
+    } catch {
+      return PRODUCTION_ANCHORS;
+    }
+  }
+  return devAnchors;
+}
+
+function mergeMarks(prev: MarkSummary[], next: MarkSummary[]): MarkSummary[] {
+  const byId = new Map(prev.map((m) => [m.id, m]));
+  for (const m of next) byId.set(m.id, m);
+  return [...byId.values()];
+}
+
+async function updateBadge(tabId: number, state: TabState): Promise<void> {
+  const all = [...state.marks, ...(state.page ? [state.page] : [])];
+  if (all.length === 0) {
+    await chrome.action.setBadgeText({ tabId, text: '' });
+    return;
+  }
+  const strong = all.filter((m) => m.verdict === 'verified_here' || m.verdict === 'verified_in_channel' || m.verdict === 'verified_email').length;
+  const failed = all.filter((m) => m.verdict === 'not_verified').length;
+  // The toolbar is the reader's own check, so it states the worst case first.
+  const colour = failed > 0 ? '#D93036' : strong > 0 ? '#00758D' : '#697386';
+  await chrome.action.setBadgeBackgroundColor({ tabId, color: colour });
+  await chrome.action.setBadgeTextColor?.({ tabId, color: '#FFFFFF' });
+  await chrome.action.setBadgeText({ tabId, text: String(all.length) });
+}
+
+async function activeTabId(): Promise<number | undefined> {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return tab?.id;
+}
+
+async function openPopup(): Promise<boolean> {
+  try {
+    await chrome.action.openPopup();
+    return true;
+  } catch {
+    return false;
+  }
+}
