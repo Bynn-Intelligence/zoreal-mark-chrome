@@ -67,11 +67,11 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
       return { opened: await openPopup() };
     case 'createOrder': {
       const s = await loadSettings();
-      return new RecordService(s.baseUrl).createOrder(msg.body);
+      return new RecordService(s.baseUrl, s.apiPrefix).createOrder(msg.body);
     }
     case 'pollOrder': {
       const s = await loadSettings();
-      return new RecordService(s.baseUrl).pollOrder(msg.order);
+      return new RecordService(s.baseUrl, s.apiPrefix).pollOrder(msg.order);
     }
     case 'getSettings':
       return loadSettings();
@@ -87,7 +87,7 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
 
 async function verifyOne(m: { marker: 'signed' | 'delegated'; text: string; id: string }, pageUrl: string): Promise<MarkSummary> {
   const settings = await loadSettings();
-  const service = new RecordService(settings.baseUrl);
+  const service = new RecordService(settings.baseUrl, settings.apiPrefix);
   const anchors = await anchorsFor(settings.baseUrl, service);
   const result: VerifyResult = await verifyMark(
     { marker: m.marker, text: m.text, id: m.id },

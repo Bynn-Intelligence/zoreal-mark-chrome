@@ -139,7 +139,7 @@ src/
   content/        content.ts: finds Marks in the page, draws inline badges and the hover card, the sign control
   shared/         The message protocol, settings, the record service client, the order key, the QR frames
   popup/          The toolbar popup: verdicts on this tab, the Sign flow
-  options/        Record service URL, mirror, sighting reports
+  options/        Record service origin and API prefix, sighting reports
 sites.json        Community-maintained: where the post and comment boxes are, per site
   ui/             Shared DOM helpers, styles, inlined Lucide icons
 dev/

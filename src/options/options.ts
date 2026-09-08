@@ -3,6 +3,7 @@ import type { Settings } from '../shared/messages.js';
 
 const send = <T,>(msg: unknown): Promise<T> => chrome.runtime.sendMessage(msg) as Promise<T>;
 const baseUrl = document.getElementById('baseUrl') as HTMLInputElement;
+const apiPrefix = document.getElementById('apiPrefix') as HTMLInputElement;
 const sightings = document.getElementById('sightings') as HTMLInputElement;
 const status = document.getElementById('status')!;
 
@@ -14,6 +15,7 @@ document.getElementById('pins')!.textContent = [
 
 const s = await send<Settings>({ type: 'getSettings' });
 baseUrl.value = s.baseUrl;
+apiPrefix.value = s.apiPrefix;
 sightings.checked = s.sightings;
 
 document.getElementById('save')!.addEventListener('click', async () => {
@@ -26,7 +28,7 @@ document.getElementById('save')!.addEventListener('click', async () => {
     status.textContent = e instanceof Error ? e.message : 'not a URL';
     return;
   }
-  await send({ type: 'saveSettings', settings: { baseUrl: origin, sightings: sightings.checked } });
+  await send({ type: 'saveSettings', settings: { baseUrl: origin, apiPrefix: apiPrefix.value.trim() || '/v1', sightings: sightings.checked } });
   baseUrl.value = origin;
   status.textContent = 'Saved';
   status.className = 'note ok';

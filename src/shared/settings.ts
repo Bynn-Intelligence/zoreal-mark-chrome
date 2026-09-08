@@ -1,14 +1,24 @@
 import type { Settings } from './messages.js';
 
 export const DEFAULT_SETTINGS: Settings = {
-  baseUrl: 'https://zoreal.com',
+  // The API origin. Records are the same bytes at https://zoreal.com/mark/<id>,
+  // which is the URL a person opens; the extension fetches them from the API
+  // directly and creates its orders there.
+  baseUrl: 'https://api.zoreal.com',
+  apiPrefix: '/v1',
   sightings: false,
 };
 
 export async function loadSettings(): Promise<Settings> {
   const got = await chrome.storage.local.get('settings');
   const s = (got.settings ?? {}) as Partial<Settings>;
-  return { ...DEFAULT_SETTINGS, ...s };
+  return { ...DEFAULT_SETTINGS, ...s, apiPrefix: normalisePrefix(s.apiPrefix ?? DEFAULT_SETTINGS.apiPrefix) };
+}
+
+/** "/v1" or "/api/v1": a leading slash, no trailing one. */
+export function normalisePrefix(p: string): string {
+  const t = p.trim().replace(/\/+$/, '');
+  return t.startsWith('/') ? t : `/${t}`;
 }
 
 export async function saveSettings(s: Settings): Promise<void> {

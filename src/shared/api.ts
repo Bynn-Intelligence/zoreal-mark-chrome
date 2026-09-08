@@ -8,7 +8,11 @@ import type { OrderCreated, OrderStatus } from './messages.js';
  * about the page or the reader.
  */
 export class RecordService {
-  constructor(private readonly baseUrl: string) {}
+  constructor(private readonly baseUrl: string, private readonly apiPrefix = '/v1') {}
+
+  private api(path: string): string {
+    return `${this.baseUrl.replace(/\/$/, '')}${this.apiPrefix}${path}`;
+  }
 
   recordUrl(id: string): string {
     return `${this.baseUrl.replace(/\/$/, '')}/mark/${id}`;
@@ -36,7 +40,7 @@ export class RecordService {
   }
 
   async createOrder(body: Record<string, unknown>): Promise<OrderCreated> {
-    const res = await fetch(`${this.baseUrl}/v1/zoreal/mark/orders`, {
+    const res = await fetch(this.api('/zoreal/mark/orders'), {
       method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, credentials: 'omit', body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`the record service answered HTTP ${res.status}: ${await res.text().catch(() => '')}`);
@@ -44,13 +48,13 @@ export class RecordService {
   }
 
   async pollOrder(order: string): Promise<OrderStatus> {
-    const res = await fetch(`${this.baseUrl}/v1/zoreal/mark/orders/${encodeURIComponent(order)}`, { headers: { Accept: 'application/json' }, credentials: 'omit', cache: 'no-store' });
+    const res = await fetch(this.api(`/zoreal/mark/orders/${encodeURIComponent(order)}`), { headers: { Accept: 'application/json' }, credentials: 'omit', cache: 'no-store' });
     if (!res.ok) throw new Error(`the record service answered HTTP ${res.status}`);
     return (await res.json()) as OrderStatus;
   }
 
   async reportSighting(id: string, urlSeen: string): Promise<void> {
-    await fetch(`${this.baseUrl}/v1/zoreal/mark/sightings`, {
+    await fetch(this.api('/zoreal/mark/sightings'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'omit', body: JSON.stringify({ id, url_seen: urlSeen }),
     }).catch(() => undefined);
   }

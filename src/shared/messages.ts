@@ -28,6 +28,8 @@ export type OrderStatus =
 export interface Settings {
   /** The record service origin. Records live at <origin>/mark/<id>. */
   baseUrl: string;
+  /** Where the API is mounted on that origin: `/v1` in production, `/api/v1` on a local Rails. */
+  apiPrefix: string;
   /** Sighting reports on "Verified for another page". Off by default. */
   sightings: boolean;
 }
