@@ -291,22 +291,17 @@ unless you turn sighting reports on.
 With the extension installed, this README is a test page: every Mark below gets a badge
 as soon as the page loads, and the popup lists them. Hover a badge for the card.
 
-A Mark as it is posted, each marker on its own line:
+Three statements, to be signed:
 
 ::ZOREAL-MARK::
 
-keso njure
+I confirm that the ministry received the audit report on 3 September 2026 and that no decision has been taken on it yet.
 
-::ZOREAL-SIGNATURE:GKJQTMHEDSG0RRV6VQS4ACXP::
+::ZOREAL-SIGNATURE:TOBESIGNED00000000000000::
 
-The same format on one line:
+::ZOREAL-MARK:: This statement was written by me, not by my office, and I stand behind every word of it. ::ZOREAL-SIGNATURE:TOBESIGNED00000000000000::
 
-::ZOREAL-MARK:: keso e gott ::ZOREAL-SIGNATURE:XCTZ18HAB05B5RJB938NB20J::
-
-A Mark whose text was changed after signing (the record says "kebab"), which must read
-**Not verified**, the text was altered:
-
-::ZOREAL-MARK:: kebab, but with extra words nobody signed ::ZOREAL-SIGNATURE:CDXD81FMWQPT8RGG8C8PK5BW::
+::ZOREAL-MARK:: The figures I gave the committee this morning were correct at the time; the revised numbers will be published on Friday. ::ZOREAL-SIGNATURE:TOBESIGNED00000000000000::
 
 A Mark cut short by a platform that truncates long posts, so the id is incomplete. This
 one needs no server at all and reads **No signature found**:
@@ -317,15 +312,6 @@ An id of the right length that is not one: Crockford base32 never uses I, L, O o
 this also reads **No signature found** without a server:
 
 ::ZOREAL-MARK:: a plausible sentence ::ZOREAL-SIGNATURE:0000000000000000000000IL::
-
-A post whose closing marker was cut off entirely shows nothing: the extension keys on
-the signature marker, so a Mark with no signature marker is just text.
-
-The three real Marks above were signed with a ZOREAL ID in the lab, for pages of a local
-development setup. Against the public record service, which is not live yet, they read
-**Cannot verify now**, which is honest: the record cannot be fetched. Once the service is
-live they will be re-signed here, bound to this very page, and read **Verified by
-ZOREAL**. For every verdict today, run the local demo in [Development](#development).
 
 ## License
 
