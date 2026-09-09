@@ -1,7 +1,7 @@
 import { toBase64Url, toHex, utf8 } from '@zoreal/mark-verify';
 
 /**
- * One animated QR frame (SIGNING.md section 5):
+ * One animated QR frame:
  *
  *   https://id.zoreal.com/sign?q=zoreal.<qr_token>.<time>.<hmac>#k=<key>
  *
