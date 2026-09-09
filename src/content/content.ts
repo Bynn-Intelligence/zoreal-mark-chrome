@@ -269,10 +269,15 @@ function attachSignControls(): void {
   }
 }
 
-document.addEventListener('focusin', (e) => {
+function rememberEditable(e: Event): void {
   const t = e.target as HTMLElement | null;
   if (t && editable(t)) lastEditable = t.closest('textarea, input, [contenteditable]') as HTMLElement;
-});
+}
+document.addEventListener('focusin', rememberEditable);
+// The context menu path: the box that was right-clicked is the box to sign,
+// whether or not the click focused it (framework editors often do not).
+document.addEventListener('contextmenu', rememberEditable, true);
+document.addEventListener('mousedown', rememberEditable, true);
 window.addEventListener('scroll', positionControl, { passive: true });
 window.addEventListener('resize', positionControl);
 
@@ -325,6 +330,7 @@ function insertMark(id: string, marker: 'signed' | 'delegated'): boolean {
 
 chrome.runtime.onMessage.addListener((msg: ContentRequest, _sender, sendResponse) => {
   switch (msg.type) {
+    case 'ping': sendResponse({ ok: true }); return;
     case 'getSignTarget': sendResponse(signTarget()); return;
     case 'insertMark': sendResponse({ ok: insertMark(msg.id, msg.marker) }); return;
     case 'rescan': scan(); attachSignControls(); sendResponse({ ok: true }); return;

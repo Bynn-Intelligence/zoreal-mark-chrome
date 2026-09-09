@@ -31,7 +31,7 @@ export default defineManifest({
       all_frames: false,
     },
   ],
-  permissions: ['storage', 'activeTab', 'contextMenus'],
+  permissions: ['storage', 'activeTab', 'contextMenus', 'scripting'],
   host_permissions: ['https://zoreal.com/*', 'https://api.zoreal.com/*', 'http://localhost:4820/*', 'http://localhost:3000/*'],
   web_accessible_resources: [
     { resources: ['fonts/*', 'icons/*'], matches: ['<all_urls>'] },

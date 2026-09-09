@@ -39,6 +39,7 @@ export type Request =
   | { type: 'verifyPage'; pageUrl: string; id: string; text: string }
   | { type: 'tabState'; tabId?: number }
   | { type: 'openPopupForSigning' }
+  | { type: 'ensureContent'; tabId: number }
   | { type: 'createOrder'; body: Record<string, unknown> }
   | { type: 'pollOrder'; order: string }
   | { type: 'getSettings' }
@@ -46,6 +47,7 @@ export type Request =
   | { type: 'clearCache' };
 
 export type ContentRequest =
+  | { type: 'ping' }
   | { type: 'getSignTarget' }
   | { type: 'insertMark'; id: string; marker: 'signed' | 'delegated' }
   | { type: 'rescan' };

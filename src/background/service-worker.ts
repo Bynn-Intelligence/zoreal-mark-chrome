@@ -14,7 +14,30 @@ const tabs = new Map<number, TabState>();
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: 'zoreal-sign', title: 'Sign this with ZOREAL Mark', contexts: ['editable'] });
+  // Content scripts land only in pages loaded after the extension. The tabs
+  // already open at install or reload would otherwise answer nothing until
+  // reloaded, and the popup would blame the cursor.
+  void injectIntoOpenTabs();
 });
+
+const CONTENT_FILES = chrome.runtime.getManifest().content_scripts?.[0]?.js ?? [];
+
+async function injectIntoOpenTabs(): Promise<void> {
+  const open = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+  await Promise.all(open.map((t) => (t.id === undefined ? Promise.resolve() : ensureContent(t.id))));
+}
+
+/** True when the page answers; injects first when it does not (once, idempotent). */
+async function ensureContent(tabId: number): Promise<boolean> {
+  const alive = await chrome.tabs.sendMessage(tabId, { type: 'ping' }).then(() => true).catch(() => false);
+  if (alive) return true;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_FILES });
+    return await chrome.tabs.sendMessage(tabId, { type: 'ping' }).then(() => true).catch(() => false);
+  } catch {
+    return false; // chrome://, the Web Store, and other pages no extension may touch
+  }
+}
 
 chrome.contextMenus.onClicked.addListener((info) => {
   if (info.menuItemId === 'zoreal-sign') void openPopup();
@@ -65,6 +88,8 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
     }
     case 'openPopupForSigning':
       return { opened: await openPopup() };
+    case 'ensureContent':
+      return { ok: await ensureContent(msg.tabId) };
     case 'createOrder': {
       const s = await loadSettings();
       return new RecordService(s.baseUrl, s.apiPrefix).createOrder(msg.body);

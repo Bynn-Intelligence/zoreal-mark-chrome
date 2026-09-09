@@ -54,8 +54,14 @@ async function renderHome(): Promise<void> {
 async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> {
   const box = document.getElementById('sign')!;
   let target: SignTarget | null = null;
+  let reachable = false;
   if (tab?.id !== undefined) {
-    target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }).catch(() => null)) as SignTarget | null;
+    reachable = (await send<{ ok: boolean }>({ type: 'ensureContent', tabId: tab.id }).catch(() => ({ ok: false }))).ok;
+    if (reachable) target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }).catch(() => null)) as SignTarget | null;
+  }
+  if (!reachable) {
+    box.innerHTML = `<div class="empty"><b>This page cannot be signed from.</b> Chrome keeps extensions out of its own pages and the Web Store; on any other page, reload it once and open this again.</div>`;
+    return;
   }
   if (!target || !target.found) {
     box.innerHTML = `<div class="empty"><b>Put the cursor in the text box you are writing in</b>, then open this again. On listed sites a sign control appears beside the box; everywhere else this works from the toolbar or the context menu.</div>`;
