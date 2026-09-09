@@ -16,6 +16,9 @@ header .spacer { flex: 1; }
 .summary .list .item { border: 1px solid var(--hairline); border-radius: var(--r-inset); }
 .item { padding: 10px 12px; }
 .item .who { color: var(--ink-secondary); margin-top: 4px; font-size: 13px; }
+.item .text { color: var(--ink); margin-top: 8px; font-size: 13px; line-height: 1.35; max-height: 54px; overflow: hidden; }
+.item.link { cursor: pointer; }
+.item.link:hover, .item.link:focus-visible { background: var(--brand-tint); border-color: var(--brand); outline: none; }
 .item .meta { color: var(--ink-muted); margin-top: 2px; font-size: 12px; }
 .empty { color: var(--ink-secondary); padding: 10px 12px; }
 .empty b { color: var(--ink); font-weight: 500; }

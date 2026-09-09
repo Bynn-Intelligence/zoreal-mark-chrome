@@ -1,7 +1,14 @@
 import type { VerifyResult } from '@zoreal/mark-verify';
 
 /** What the background returns for one Mark: the verifier's result without the record. */
-export type MarkSummary = Omit<VerifyResult, 'record'> & { id: string; marker: 'signed' | 'delegated' };
+export type MarkSummary = Omit<VerifyResult, 'record'> & {
+  id: string;
+  marker: 'signed' | 'delegated';
+  /** The text between the markers, as found on the page. */
+  text?: string;
+  /** Where on the page: the frame and the occurrence number the content script gave the badge. */
+  where?: { frameId: number; ordinal: number };
+};
 
 export interface TabState {
   url: string;
@@ -35,7 +42,7 @@ export interface Settings {
 }
 
 export type Request =
-  | { type: 'verify'; pageUrl: string; marks: { marker: 'signed' | 'delegated'; text: string; id: string }[] }
+  | { type: 'verify'; pageUrl: string; marks: { marker: 'signed' | 'delegated'; text: string; id: string; ordinal: number }[] }
   | { type: 'verifyPage'; pageUrl: string; id: string; text: string }
   | { type: 'tabState'; tabId?: number }
   | { type: 'openPopupForSigning' }
@@ -52,6 +59,7 @@ export type ContentRequest =
   | { type: 'ping' }
   | { type: 'getSignTarget' }
   | { type: 'insertMark'; id: string; marker: 'signed' | 'delegated' }
+  | { type: 'revealMark'; ordinal: number }
   | { type: 'rescan' };
 
 export interface SignTarget {

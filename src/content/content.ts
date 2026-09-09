@@ -65,7 +65,7 @@ function candidateNodes(root: Node): Text[] {
     acceptNode(n) {
       const p = n.parentElement;
       if (!p || processed.has(n)) return NodeFilter.FILTER_REJECT;
-      if (p.closest('script, style, noscript, textarea, [data-zoreal-mark-host]')) return NodeFilter.FILTER_REJECT;
+      if (p.closest('script, style, noscript, textarea, [data-zoreal-mark-host], [data-zoreal-marker]')) return NodeFilter.FILTER_REJECT;
       if (editable(p)) return NodeFilter.FILTER_REJECT;
       return n.nodeValue && n.nodeValue.includes(CLOSE) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
     },
@@ -74,6 +74,12 @@ function candidateNodes(root: Node): Text[] {
   while ((n = walker.nextNode())) out.push(n as Text);
   return out;
 }
+
+/** Every badge placed in this frame gets a number, so the popup can point back at it. */
+let nextOrdinal = 0;
+const hostsByOrdinal = new Map<number, HTMLElement>();
+/** The element a page-level Mark covers, for the same purpose; ordinal -1. */
+let pageMarkElement: HTMLElement | null = null;
 
 function scan(root: Node = document.body): void {
   const found: { mark: FoundMark; node: Text }[] = [];
@@ -102,8 +108,9 @@ function scan(root: Node = document.body): void {
   // One badge per occurrence, and results come back in the order sent: the
   // same id can appear several times on a page with different text around it
   // (a quote, an altered copy), and each occurrence gets its own verdict.
-  const slots = found.map((f) => placeBadge(f.node, f.mark));
-  void chrome.runtime.sendMessage({ type: 'verify', pageUrl: location.href, marks: found.map((f) => ({ marker: f.mark.marker, text: f.mark.text, id: f.mark.id })) })
+  const ordinals = found.map(() => nextOrdinal++);
+  const slots = found.map((f, i) => placeBadge(f.node, f.mark, ordinals[i]!));
+  void chrome.runtime.sendMessage({ type: 'verify', pageUrl: location.href, marks: found.map((f, i) => ({ marker: f.mark.marker, text: f.mark.text, id: f.mark.id, ordinal: ordinals[i]! })) })
     .then((res: { results?: MarkSummary[]; error?: string } | undefined) => {
       if (!res || !res.results) { for (const r of slots) r(null, res?.error); return; }
       res.results.forEach((r, i) => slots[i]?.(r));
@@ -137,7 +144,60 @@ function candidateClosers(block: HTMLElement): Text[] {
   return out;
 }
 
-function placeBadge(node: Text, mark: FoundMark): Render {
+/**
+ * A verified post reads as the words and the badge, not the words wrapped in
+ * markers. The two marker strings are moved into hidden spans (the text is
+ * still in the DOM for copying and for a re-scan, which skips them), and a
+ * paragraph left holding nothing but a hidden marker is hidden with it.
+ * Anything short of a strong verdict keeps its markers on screen: a Mark that
+ * did not verify should look exactly like what it is.
+ */
+function hideMarkers(closingMarker: Text, host: HTMLElement): void {
+  const block = blockOf(host);
+  const opening = openingMarkerBefore(block, closingMarker);
+  for (const marker of [opening, closingMarker]) {
+    if (!marker || !marker.isConnected) continue;
+    const span = document.createElement('span');
+    span.setAttribute('data-zoreal-marker', '');
+    span.style.display = 'none';
+    marker.parentNode?.insertBefore(span, marker);
+    span.append(marker);
+    const paragraph = span.parentElement?.closest('p, li, div, blockquote, dd, dt, h1, h2, h3, h4, h5, h6') as HTMLElement | null;
+    const only = (paragraph?.textContent ?? '').replace(/\s|\u00a0/g, '') === (marker.nodeValue ?? '').replace(/\s/g, '');
+    if (paragraph && paragraph !== block && !paragraph.querySelector('[data-zoreal-mark-host]') && only) {
+      paragraph.setAttribute('data-zoreal-hidden-marker', '');
+      paragraph.style.display = 'none';
+    }
+  }
+}
+
+/** The last opening marker in document order before `closer`, cut into its own text node. */
+function openingMarkerBefore(block: HTMLElement, closer: Text): Text | null {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  let found: Text | null = null;
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    if (n === closer) break;
+    const t = n as Text;
+    if (t.parentElement?.closest('[data-zoreal-marker]')) continue;
+    const re = /::ZOREAL-(MARK|DELEGATED)::/g;
+    let m: RegExpExecArray | null;
+    let last: RegExpExecArray | null = null;
+    while ((m = re.exec(t.nodeValue ?? ''))) last = m;
+    if (last) found = t;
+  }
+  if (!found) return null;
+  const re = /::ZOREAL-(MARK|DELEGATED)::/g;
+  let m: RegExpExecArray | null;
+  let last: RegExpExecArray | null = null;
+  while ((m = re.exec(found.nodeValue ?? ''))) last = m;
+  if (!last) return null;
+  const marker = found.splitText(last.index);
+  marker.splitText(last[0].length);
+  return marker;
+}
+
+function placeBadge(node: Text, mark: FoundMark, ordinal: number): Render {
   const value = node.nodeValue ?? '';
   const at = value.indexOf(CLOSE);
   const endRe = /::ZOREAL-SIGNATURE:[0-9A-Za-z]{1,64}::/g;
@@ -145,8 +205,13 @@ function placeBadge(node: Text, mark: FoundMark): Render {
   const m = endRe.exec(value);
   const splitAt = m ? m.index + m[0].length : value.length;
   const after = node.splitText(splitAt);
+  // The closing marker is now the tail of `node`, from `m.index`: cut it into
+  // its own text node so it can be hidden once the verdict is strong.
+  const closingMarker = m ? node.splitText(m.index) : null;
   const host = document.createElement('span');
   host.setAttribute('data-zoreal-mark-host', mark.id);
+  host.setAttribute('data-zoreal-ordinal', String(ordinal));
+  hostsByOrdinal.set(ordinal, host);
   const shadow = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
   style.textContent = BADGE_CSS;
@@ -179,6 +244,7 @@ function placeBadge(node: Text, mark: FoundMark): Render {
     badge.className = `badge ${v.style}`;
     badge.innerHTML = `${icon(v.icon)}<span>${esc(v.label)}</span>`;
     card.innerHTML = cardHtml(r);
+    if (v.style === 'strong' && closingMarker) hideMarkers(closingMarker, host);
     // Keep the card on screen when the badge sits near the right edge.
     const rect = host.getBoundingClientRect();
     if (rect.left + 320 > window.innerWidth) card.classList.add('right');
@@ -226,6 +292,7 @@ function scanPageMark(): void {
   const el = document.querySelector('[data-zoreal-mark]') ?? document.querySelector('article') ?? document.querySelector('main');
   if (!el) return;
   const canonical = (document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null)?.href || location.href;
+  pageMarkElement = el as HTMLElement;
   void chrome.runtime.sendMessage({ type: 'verifyPage', pageUrl: canonical, id: meta.content.trim(), text: (el as HTMLElement).innerText });
 }
 
@@ -376,11 +443,41 @@ function insertMark(id: string, marker: 'signed' | 'delegated'): boolean {
   return true;
 }
 
+/**
+ * Scrolls the Mark into view and outlines the block that holds it for a
+ * moment. `scrollIntoView` also scrolls the frames above this one, so a Mark
+ * inside an embedded editor comes into view on the page the reader sees.
+ */
+function revealMark(ordinal: number): boolean {
+  const host = ordinal < 0 ? pageMarkElement : hostsByOrdinal.get(ordinal);
+  if (!host || !host.isConnected) return false;
+  const block = ordinal < 0 ? host : blockOf(host);
+  // Instant, not smooth: a smooth scroll is a frame-driven animation, and the
+  // popup that asked has just closed over a page that may not be painting yet.
+  block.scrollIntoView({ block: 'center' });
+  const prev = { outline: block.style.outline, offset: block.style.outlineOffset, radius: block.style.borderRadius, transition: block.style.transition };
+  block.style.transition = 'outline-color 400ms ease-out';
+  block.style.outline = '2px solid #00B4D9';
+  block.style.outlineOffset = '4px';
+  if (!block.style.borderRadius) block.style.borderRadius = '6px';
+  setTimeout(() => {
+    block.style.outlineColor = 'transparent';
+    setTimeout(() => {
+      block.style.outline = prev.outline;
+      block.style.outlineOffset = prev.offset;
+      block.style.borderRadius = prev.radius;
+      block.style.transition = prev.transition;
+    }, 450);
+  }, 2200);
+  return true;
+}
+
 chrome.runtime.onMessage.addListener((msg: ContentRequest, _sender, sendResponse) => {
   switch (msg.type) {
     case 'ping': sendResponse({ ok: true }); return;
     case 'getSignTarget': sendResponse(signTarget()); return;
     case 'insertMark': sendResponse({ ok: insertMark(msg.id, msg.marker) }); return;
+    case 'revealMark': sendResponse({ ok: revealMark(msg.ordinal) }); return;
     case 'rescan': scan(); attachSignControls(); sendResponse({ ok: true }); return;
   }
 });

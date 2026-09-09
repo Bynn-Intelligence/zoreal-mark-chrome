@@ -54,6 +54,8 @@ function demoPage(host) {
 <p>The mock cannot sign: it has no keys. Type exactly the text below and the pretend order completes with the fixture record that carries that hash; anything else fails with a reason.</p>
 <pre>${esc(okPage.text)}</pre>
 <textarea id="demo-box" placeholder="Write here, then use the sign control or the toolbar"></textarea>
+${process.env.REAL_MARK ? `<h2>A real record</h2><p>Served by a record service other than this mock (set REAL_MARK="id|text" and point the extension at that service): the block form, verified against a real record.</p><div id="real"><p>::ZOREAL-MARK::</p><p>${esc(process.env.REAL_MARK.split('|').slice(1).join('|'))}</p><p>::ZOREAL-SIGNATURE:${esc(process.env.REAL_MARK.split('|')[0])}::</p></div>` : ''}
+${(() => { const here = cases.find((c) => c.name === 'ok-demo-here'); return here ? `<h2>Signed for this very page</h2><p>Bound to this page's own address, so it verifies strongly here and nowhere else. A strong verdict hides the markers and leaves the words and the badge.</p><div id="here"><p>::ZOREAL-MARK::</p><p>${esc(here.text)}</p><p>::ZOREAL-SIGNATURE:${esc(here.id)}::</p></div>` : ''; })()}
 <h2>Posted over several lines</h2>
 <p>The same record as the first case, posted the way a platform renders blank lines: three paragraphs. It verifies the same, because surrounding spaces and line breaks are not part of the text.</p>
 <div id="multiline"><p>${esc(cases[0].marker === 'delegated' ? '::ZOREAL-DELEGATED::' : '::ZOREAL-MARK::')}</p><p></p><p>${esc(cases[0].text)}</p><p></p><p>::ZOREAL-SIGNATURE:${esc(cases[0].id)}::</p></div>

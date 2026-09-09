@@ -47,7 +47,7 @@ or anything about the platform account that posted it.
 
 | Verdict | Meaning |
 |---|---|
-| **Verified here** | Everything checks, and the record was signed for this page |
+| **Verified by ZOREAL** | Everything checks, and the record was signed for this page |
 | **Verified for another page** | Everything checks, but the record names a different page, which is shown. The text was moved |
 | **Verified, not bound to a page** | Everything checks; the Mark was made without a page (from the phone, or in a chat with no URL) |
 | **Posted by an agent operated by a verified human** | A delegated Mark, opened with `::ZOREAL-DELEGATED::` |

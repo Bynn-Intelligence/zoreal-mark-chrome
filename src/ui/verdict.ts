@@ -19,7 +19,7 @@ export interface VerdictView {
  */
 export function verdictView(m: Pick<MarkSummary, 'verdict' | 'reason' | 'signedUrl' | 'withdrawn' | 'delegation' | 'failedStep'>): VerdictView {
   switch (m.verdict) {
-    case 'verified_here': return { style: 'strong', icon: 'badge-check', label: 'Verified here' };
+    case 'verified_here': return { style: 'strong', icon: 'badge-check', label: 'Verified by ZOREAL' };
     case 'verified_in_channel': return { style: 'strong', icon: 'badge-check', label: 'Verified in this channel' };
     case 'verified_email': return { style: 'strong', icon: 'badge-check', label: 'Verified from this sender to these recipients' };
     case 'verified_email_other_recipients': return { style: 'secondary', icon: 'mail', label: 'Verified, but sent to different recipients' };

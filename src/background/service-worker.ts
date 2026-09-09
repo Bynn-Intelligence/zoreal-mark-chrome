@@ -71,7 +71,10 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
       // top page's origin. The same rule binds a Mark signed in a frame.
       const pageUrl = pageUrlFor(sender, msg.pageUrl);
       const results: MarkSummary[] = [];
-      for (const m of msg.marks) results.push(await verifyOne(m, pageUrl));
+      for (const m of msg.marks) {
+        const summary = await verifyOne(m, pageUrl);
+        results.push({ ...summary, text: m.text, where: { frameId: sender.frameId ?? 0, ordinal: m.ordinal } });
+      }
       if (tabId !== undefined) {
         const prev = tabs.get(tabId);
         const merged = mergeMarks(prev?.marks ?? [], results);
@@ -165,10 +168,12 @@ async function anchorsFor(baseUrl: string, service: RecordService): Promise<Trus
   return devAnchors;
 }
 
+/** One entry per occurrence on the page: the same id twice is two places to point at. */
 function mergeMarks(prev: MarkSummary[], next: MarkSummary[]): MarkSummary[] {
-  const byId = new Map(prev.map((m) => [m.id, m]));
-  for (const m of next) byId.set(m.id, m);
-  return [...byId.values()];
+  const key = (m: MarkSummary) => (m.where ? `${m.where.frameId}:${m.where.ordinal}` : m.id);
+  const byKey = new Map(prev.map((m) => [key(m), m]));
+  for (const m of next) byKey.set(key(m), m);
+  return [...byKey.values()];
 }
 
 async function updateBadge(tabId: number, state: TabState): Promise<void> {

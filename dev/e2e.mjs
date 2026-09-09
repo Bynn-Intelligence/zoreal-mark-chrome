@@ -62,15 +62,32 @@ try {
   for (const c of cases.filter((c) => c.pageUrl !== undefined && c.text !== undefined)) {
     // The demo page renders every case; cases that reuse one id with different text or page cannot all be right at once,
     // so only compare cases whose text and page match what the demo shows.
-    if (c.pageUrl !== null && !String(c.pageUrl).startsWith('https://www.youtube.com') && !String(c.pageUrl).startsWith('https://app.slack.com') && c.pageUrl !== 'https://example.org/repost') continue;
+    if (c.pageUrl !== null && !String(c.pageUrl).startsWith('https://www.youtube.com') && !String(c.pageUrl).startsWith('https://app.slack.com') && c.pageUrl !== 'https://example.org/repost' && c.pageUrl !== `${MOCK}/demo`) continue;
     const got = c.name === 'fail-1-bad-id' ? byId.get('broken') : byId.get(c.id);
     if (!got) { console.log(`  MISSING ${c.name}`); failures++; continue; }
     // On the demo page every page-bound record is "for another page", because the demo is not the page it was signed for.
-    const expected = c.expect.verdict === 'verified_here' || c.expect.verdict === 'verified_in_channel' ? 'verified_other_page' : c.expect.verdict;
+    const expected = c.pageUrl !== `${MOCK}/demo` && (c.expect.verdict === 'verified_here' || c.expect.verdict === 'verified_in_channel') ? 'verified_other_page' : c.expect.verdict;
     const ok = [...got].some((g) => g.startsWith(expected)) || (c.name.startsWith('ok-email') && got.has('verified_unbound'));
     if (!ok) { console.log(`  WRONG ${c.name}: expected ${expected}, got ${[...got].join('/')}`); failures++; }
   }
   console.log(failures === 0 ? 'every case rendered as expected' : `${failures} mismatches`);
+
+  // A strongly verified Mark shows its words and its badge, not its markers:
+  // both marker strings are hidden, and a paragraph holding only a marker
+  // is hidden with it. The block-form copy in #here is the one to check.
+  const hidden = await page.evaluate(() => {
+    const here = document.getElementById('here');
+    if (!here) return null;
+    const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    const markers = [...here.querySelectorAll('[data-zoreal-marker]')];
+    const paragraphs = [...here.querySelectorAll('p')];
+    return { markers: markers.length, markersVisible: markers.filter(visible).length, paragraphsVisible: paragraphs.filter(visible).length,
+      visibleText: here.innerText.replace(/\s+/g, ' ').trim().slice(0, 80), verdict: here.querySelector('[data-zoreal-verdict]')?.getAttribute('data-zoreal-verdict') };
+  });
+  console.log('verified block:', JSON.stringify(hidden));
+  await page.evaluate(() => document.getElementById('here')?.scrollIntoView({ block: 'center' }));
+  await (await page.$('#here'))?.screenshot({ path: 'dev/screens/verified-block.png' });
+  if (!hidden || hidden.verdict !== 'verified_here' || hidden.markers !== 2 || hidden.markersVisible !== 0 || hidden.visibleText.includes('::ZOREAL')) { console.log('  WRONG: markers of a verified Mark still visible'); failures++; }
 
   // Hover the first badge for the card, and focus the demo box for the sign control.
   await page.hover('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"])');

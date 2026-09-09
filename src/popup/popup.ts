@@ -27,12 +27,38 @@ function header(): string {
   return `<header><img src="/icons/icon-32.png" alt="" /><span class="title">ZOREAL Mark</span><span class="spacer"></span><button class="icon" id="options" aria-label="Settings" title="Settings">${icon('info')}</button></header>`;
 }
 
+const TEXT_PREVIEW = 160;
+
+/**
+ * One Mark on the page: verdict, the text itself, who, when. The card is a
+ * button that scrolls the page to the Mark and outlines it, because a list
+ * of verdicts with no way back to the words is a list of nothing.
+ */
 function itemHtml(m: MarkSummary, pageLevel = false): string {
   const v = verdictView(m);
   const who = m.verdict === 'not_verified' || m.verdict === 'cannot_verify_now' || m.verdict === 'no_signature' ? '' : `<div class="who">${esc(subjectLine(m))}</div>`;
   const when = m.time?.at ? `${m.time.at.slice(0, 16).replace('T', ' ')} UTC${m.time.status === 'unconfirmed' ? ', unconfirmed' : ''}` : '';
   const meta = [pageLevel ? 'This page is signed' : '', v.detail ?? '', when].filter(Boolean).join(' · ');
-  return `<div class="card item"><span class="verdict ${v.style}">${icon(v.icon)}<span>${esc(v.label)}</span></span>${who}${meta ? `<div class="meta">${esc(meta)}</div>` : ''}</div>`;
+  const raw = (m.text ?? '').replace(/\s+/g, ' ').trim();
+  const text = raw ? `<div class="text">${esc(raw.slice(0, TEXT_PREVIEW))}${raw.length > TEXT_PREVIEW ? '…' : ''}</div>` : '';
+  const where = pageLevel ? `data-frame="0" data-ordinal="-1"` : m.where ? `data-frame="${m.where.frameId}" data-ordinal="${m.where.ordinal}"` : '';
+  const clickable = where ? ` link" role="button" tabindex="0" title="Show on the page" ${where}` : '"';
+  return `<div class="card item${clickable}><span class="verdict ${v.style}">${icon(v.icon)}<span>${esc(v.label)}</span></span>${text}${who}${meta ? `<div class="meta">${esc(meta)}</div>` : ''}</div>`;
+}
+
+/** Clicking an item scrolls the page to that Mark and closes the popup so it can be seen. */
+function wireReveal(tab: chrome.tabs.Tab | undefined): void {
+  if (tab?.id === undefined) return;
+  const reveal = async (el: HTMLElement) => {
+    const frameId = Number(el.dataset.frame ?? 0);
+    const ordinal = Number(el.dataset.ordinal ?? -1);
+    await chrome.tabs.sendMessage(tab.id!, { type: 'revealMark', ordinal }, { frameId }).catch(() => null);
+    window.close();
+  };
+  app.querySelectorAll<HTMLElement>('.item.link').forEach((el) => {
+    el.addEventListener('click', () => void reveal(el));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void reveal(el); } });
+  });
 }
 
 /**
@@ -70,6 +96,7 @@ async function renderHome(): Promise<void> {
       <div class="card sign" id="sign"><div class="skeleton" style="height:40px"></div></div>
     </section>`;
   document.getElementById('options')!.addEventListener('click', () => chrome.runtime.openOptionsPage());
+  wireReveal(tab);
   await renderSignStart(tab);
 }
 
