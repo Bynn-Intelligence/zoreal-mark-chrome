@@ -1,6 +1,6 @@
 {
   "name": "zoreal-mark-chrome",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "description": "ZOREAL Mark for Chrome: verify that a real human, verified by ZOREAL, vouched for what you are reading, and sign what you post.",
   "license": "MIT",
