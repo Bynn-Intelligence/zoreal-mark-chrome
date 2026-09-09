@@ -101,7 +101,6 @@ Verify ZOREAL Marks on the pages the user reads, and create one for text the use
   per-tab state that survives the background worker being suspended.
 - **scripting:** re-inserting the content script into already open tabs after an install
   or update, and checking that each frame of a tab has a running copy.
-- **activeTab:** the popup's view of the current tab.
 - **contextMenus:** the "Sign this with ZOREAL Mark" entry on editable fields.
 - **alarms:** a once-a-minute check that the active tab's frames have a running copy.
 

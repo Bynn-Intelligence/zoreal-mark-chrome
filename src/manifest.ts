@@ -38,7 +38,10 @@ export default defineManifest((env) => ({
       all_frames: true,
     },
   ],
-  permissions: ['storage', 'activeTab', 'contextMenus', 'scripting', 'alarms'],
+  // No activeTab: the host permission below already lets the popup see the
+  // current tab's URL and message its content script, so activeTab would be
+  // a grant that adds nothing, and the store rejects those.
+  permissions: ['storage', 'contextMenus', 'scripting', 'alarms'],
   // Every page, the same grant the content script above already implies, so
   // that after an extension reload the script can be put back into the tabs
   // that are already open, and so the worker can see a tab's URL when a Mark
