@@ -35,6 +35,19 @@ This extension does two things:
 Free and unlimited to sign, free and unlimited to verify. No account, no key and no
 login in the browser. Nothing to verify needs anything from you.
 
+## About ZOREAL
+
+[ZOREAL](https://zoreal.com) is proof of a real human. A person enrols once in the ZOREAL
+ID app by reading their government document and its chip, matching their face to it, and
+passing a liveness check; the app then holds a key in the phone's secure hardware that
+only that person can use, and every use is gated by their fingerprint or face. Mark is
+what that proof looks like pointed at a text box: a signature anyone can check, on any
+site, with no platform involved.
+
+Read more at [zoreal.com/product/mark](https://zoreal.com/product/mark). This extension
+and the verifier it embeds are open source, so what a Mark proves can be read as well as
+trusted.
+
 ## Status
 
 Built and exercised end to end: real Marks have been signed from a phone through this

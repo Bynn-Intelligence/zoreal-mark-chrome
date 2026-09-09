@@ -36,6 +36,11 @@ Verification runs in your browser against ZOREAL's published root certificates. 
 extension holds no account, no key and no login. It fetches public records by their code
 and sends nothing about you or the pages you read.
 
+ZOREAL is proof of a real human: a person enrols once in the ZOREAL ID app by reading
+their government document, matching their face to it and passing a liveness check, and
+signs with a key in their phone's secure hardware that only they can use. Read more at
+zoreal.com/product/mark. The extension and its verifier are open source.
+
 ## Single purpose
 
 Verify ZOREAL Marks on the pages the user reads, and create one for text the user writes.
