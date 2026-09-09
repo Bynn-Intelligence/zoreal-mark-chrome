@@ -147,16 +147,26 @@ not listed still signs from the toolbar and the context menu.
 
 ## Install
 
-The Chrome Web Store listing is the way in for everyone, on Chrome, Edge, Brave, Vivaldi,
-Arc and Opera; the link is added here the day the listing is live. Until then, and for
-anyone who wants to run the code they can read:
+**From the Chrome Web Store**, once the listing is live: the link is added here that
+day. It installs on Chrome, Edge, Brave, Vivaldi, Arc and Opera, and updates itself
+silently on the browser's next update check after a new version passes review.
 
-1. Download the package from the latest GitHub release, or build it (`npm run build`).
-2. Unzip it, open `chrome://extensions`, turn on Developer mode, choose "Load unpacked",
-   and pick the unzipped folder (or `dist/` after a build).
+**By hand**, from a release, for anyone who wants to run the code they can read or does
+not want to wait for the store:
 
-An unpacked install does not update itself; the store one does, silently, on the
-browser's next update check after a new version passes review.
+1. Open the [releases page](https://github.com/Bynn-Intelligence/zoreal-mark-chrome/releases)
+   and download `zoreal-mark-chrome-<version>.zip` from the latest release. Every tagged
+   version has one; CI builds it.
+2. Unzip it somewhere it can stay. Chrome loads the extension from that folder every
+   time, so do not delete it afterwards.
+3. Open `chrome://extensions`, turn on **Developer mode** (top right), click **Load
+   unpacked**, and pick the unzipped folder. The ZOREAL Mark icon appears in the toolbar;
+   pin it from the puzzle-piece menu if you want it visible.
+4. To update, download the newer zip, unzip it over the same folder, and press the reload
+   icon on the extension's card. A hand-installed copy does not update itself.
+
+Edge, Brave, Vivaldi, Arc and Opera take the same zip the same way through their own
+extensions page. Firefox and Safari are separate packages and are not built yet.
 
 ## Development
 

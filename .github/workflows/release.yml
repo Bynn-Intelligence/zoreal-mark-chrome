@@ -1,5 +1,8 @@
-# A tag v<version> publishes that version to the Chrome Web Store and attaches
-# the package to a GitHub release. The tag must match the manifest version.
+# A tag v<version> builds that version, attaches the package to a GitHub
+# release for anyone who installs by hand, and, when the store secrets are
+# set, uploads it to the Chrome Web Store and publishes. The tag must match
+# the manifest version. Without the secrets the store step is skipped and the
+# GitHub release still happens.
 #
 # Secrets (repository settings):
 #   CWS_EXTENSION_ID   the item id the store assigned at the first, manual upload
@@ -36,7 +39,22 @@ jobs:
           v=$(node -p "require('./dist/manifest.json').version")
           [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} but manifest version $v"; exit 1; }
       - run: npm run pack
+      - name: GitHub release with the package, for manual installs
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.zip
+          generate_release_notes: true
+          body: |
+            To install by hand: download the zip below, unzip it, open chrome://extensions,
+            turn on Developer mode, choose "Load unpacked" and pick the unzipped folder.
+            A hand-installed copy does not update itself.
+      - name: Are the store secrets set
+        id: cws
+        env:
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+        run: echo "present=$([ -n "$CWS_EXTENSION_ID" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: Upload to the Chrome Web Store and publish
+        if: steps.cws.outputs.present == 'true'
         env:
           CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
           CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
@@ -50,8 +68,3 @@ jobs:
             --client-secret "$CWS_CLIENT_SECRET" \
             --refresh-token "$CWS_REFRESH_TOKEN" \
             --auto-publish
-      - name: GitHub release with the package
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release/*.zip
-          generate_release_notes: true
