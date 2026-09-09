@@ -169,7 +169,7 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status === 'loading') {
     log('tab', tabId, 'loading; state cleared');
     void clearTab(tabId);
-    void chrome.action.setBadgeText({ tabId, text: '' });
+    void badge(tabId, { text: '' });
   }
 });
 
@@ -294,19 +294,35 @@ function mergeMarks(prev: MarkSummary[], next: MarkSummary[]): MarkSummary[] {
   return [...byKey.values()];
 }
 
+/**
+ * The toolbar badge for a tab. A verify answer can land after the tab has
+ * closed, and every badge call on a closed tab rejects with "No tab with
+ * id", so the rejection is absorbed here rather than surfacing on the
+ * worker's console as an uncaught error.
+ */
+async function badge(tabId: number, b: { text: string; colour?: string }): Promise<void> {
+  try {
+    if (b.colour) {
+      await chrome.action.setBadgeBackgroundColor({ tabId, color: b.colour });
+      await chrome.action.setBadgeTextColor?.({ tabId, color: '#FFFFFF' });
+    }
+    await chrome.action.setBadgeText({ tabId, text: b.text });
+  } catch {
+    // The tab is gone; there is no badge to draw.
+  }
+}
+
 async function updateBadge(tabId: number, state: TabState): Promise<void> {
   const all = [...state.marks, ...(state.page ? [state.page] : [])];
   if (all.length === 0) {
-    await chrome.action.setBadgeText({ tabId, text: '' });
+    await badge(tabId, { text: '' });
     return;
   }
   const strong = all.filter((m) => m.verdict === 'verified_here' || m.verdict === 'verified_in_channel' || m.verdict === 'verified_email').length;
   const failed = all.filter((m) => m.verdict === 'not_verified').length;
   // The toolbar is the reader's own check, so it states the worst case first.
   const colour = failed > 0 ? '#D93036' : strong > 0 ? '#00758D' : '#697386';
-  await chrome.action.setBadgeBackgroundColor({ tabId, color: colour });
-  await chrome.action.setBadgeTextColor?.({ tabId, color: '#FFFFFF' });
-  await chrome.action.setBadgeText({ tabId, text: String(all.length) });
+  await badge(tabId, { text: String(all.length), colour });
 }
 
 async function activeTabId(): Promise<number | undefined> {
