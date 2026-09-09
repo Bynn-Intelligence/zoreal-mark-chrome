@@ -47,10 +47,12 @@ jobs:
           cache: npm
       - name: Fetch git dependencies over HTTPS
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-      # npm install, not npm ci: the lockfile is written on a Mac and carries only
-      # that platform's native binding for the bundler; ci refuses to add the
-      # Linux one, install adds it and keeps every locked version.
-      - run: npm install --no-audit --no-fund
+      - run: npm ci
+      # The lockfile is written on a Mac and carries only that platform's native
+      # binding for the bundler; npm does not add another platform's on its own
+      # (npm/cli#4828). The runner's binding is added here, at the locked
+      # bundler version.
+      - run: npm install --no-save --no-audit --no-fund "@rolldown/binding-linux-x64-gnu@$(node -p "require('rolldown/package.json').version")"
       - name: Bump the version, commit and tag
         if: github.event_name == 'workflow_dispatch'
         run: |
