@@ -1,16 +1,19 @@
 # Releases.
 #
-# Two ways in:
-#   - Run this workflow by hand (Actions, "Release", "Run workflow") with a
-#     level: patch, minor or major. It bumps the version in package.json, which
-#     the manifest reads, commits, tags v<version>, and carries on below.
-#   - Push a tag v<version> yourself; the bump is skipped and the tag must
-#     match the manifest version.
+# Every push to main that touches the code is a release: the patch version is
+# bumped in package.json (which the manifest reads), committed, tagged
+# v<version>, built, checked, packed, published as a GitHub release with the
+# zip for hand installs, and, when the store secrets are set, uploaded to the
+# Chrome Web Store and published after review. Users receive it on their
+# browser's next update check without doing anything.
 #
-# Either way: build, check, pack, a GitHub release with the zip for hand
-# installs, and, when the store secrets are set, an upload to the Chrome Web
-# Store that publishes after review. Users receive it on their browser's next
-# update check without doing anything.
+# Two other ways in: run the workflow by hand with a level of minor or major
+# for a bigger bump; or push a tag v<version> yourself, which skips the bump
+# and must match the manifest version.
+#
+# A push that only touches documentation or the store listing is not a
+# release. The bump commit is pushed with the workflow's own token, which does
+# not start workflows, so a release cannot trigger another.
 #
 # Secrets (repository settings):
 #   CWS_EXTENSION_ID   the item id the store assigned at the first, manual upload
@@ -20,6 +23,14 @@
 name: Release
 
 on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths-ignore:
+      - '**.md'
+      - 'store/**'
+      - 'dev/screens/**'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
     inputs:
       level:
@@ -27,8 +38,6 @@ on:
         type: choice
         default: patch
         options: [patch, minor, major]
-  push:
-    tags: ['v*']
 
 concurrency: release
 
@@ -57,11 +66,13 @@ jobs:
             "@rolldown/binding-linux-x64-gnu@$(node -p "JSON.parse(require('fs').readFileSync('node_modules/rolldown/package.json','utf8')).version")" \
             "lightningcss-linux-x64-gnu@$(node -p "JSON.parse(require('fs').readFileSync('node_modules/lightningcss/package.json','utf8')).version")"
       - name: Bump the version, commit and tag
-        if: github.event_name == 'workflow_dispatch'
+        # A branch push bumps the patch level; a run by hand bumps the level
+        # chosen; a tag push is already the version and bumps nothing.
+        if: "!startsWith(github.ref, 'refs/tags/') && !startsWith(github.event.head_commit.message, 'Release v')"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          npm version "${{ inputs.level }}" -m "Release v%s"
+          npm version "${{ github.event_name == 'workflow_dispatch' && inputs.level || 'patch' }}" -m "Release v%s"
           git push --follow-tags origin HEAD:main
       - run: npm run typecheck
       - run: npm test
@@ -70,7 +81,7 @@ jobs:
         id: version
         run: |
           v=$(node -p "require('./dist/manifest.json').version")
-          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "v$v" != "${GITHUB_REF_NAME}" ]; then echo "tag ${GITHUB_REF_NAME} but manifest version $v"; exit 1; fi
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "v$v" != "${GITHUB_REF_NAME}" ]; then echo "tag ${GITHUB_REF_NAME} but manifest version $v"; exit 1; fi
           echo "tag=v$v" >> "$GITHUB_OUTPUT"
       - run: npm run pack
       - name: GitHub release with the package, for manual installs
