@@ -102,6 +102,8 @@ try {
   await page.evaluate(() => document.querySelector('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])')?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false })));
   await new Promise((r) => setTimeout(r, 400));
   if (process.env.E2E_SCREENSHOTS !== '0') await page.screenshot({ path: 'dev/screens/demo-hover.png' });
+  // Focus events only fire in the tab that has the window's focus.
+  await page.bringToFront();
   await page.evaluate(() => { const b = document.querySelector('#demo-box'); b.focus(); b.value = 'I was at the launch and the demo was real.'; b.dispatchEvent(new Event('input', { bubbles: true })); });
   await new Promise((r) => setTimeout(r, 300));
   const controlShown = await page.$eval('[data-zoreal-mark-host="sign"]', (el) => el.style.display !== 'none');

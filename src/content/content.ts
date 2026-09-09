@@ -1,4 +1,4 @@
-import { findBrokenMarkers, findMarks, siteOf, wrap, type FoundMark } from '@zoreal/mark-verify';
+import { isValidId, siteOf, wrap, type FoundMark } from '@zoreal/mark-verify';
 import type { ContentRequest, MarkSummary, SignTarget } from '../shared/messages.js';
 import { icon, subjectLine, verdictView } from '../ui/verdict.js';
 import { BADGE_CSS, CARD_LAYER_CSS, SIGN_CONTROL_CSS } from './styles.js';
@@ -128,28 +128,55 @@ const hostsByOrdinal = new Map<number, HTMLElement>();
 /** The element a page-level Mark covers, for the same purpose; ordinal -1. */
 let pageMarkElement: HTMLElement | null = null;
 
+/**
+ * The Mark whose closing marker sits in `closer`: the id from that marker, and
+ * the text back to the NEAREST opening marker before it, in the smallest block
+ * that holds both.
+ *
+ * Pairing is done from the closing marker backwards, one Mark at a time, and
+ * never by listing every Mark in a container and matching by position. A page
+ * that mentions a marker in passing (a README explaining the format, a table
+ * of verdicts) would otherwise lend its stray opening marker to the next real
+ * Mark below it, and a container with several Marks would hand each closing
+ * marker some other Mark's text. Both happened on this repository's own page.
+ */
+function markFor(closer: Text): { mark: FoundMark } | { broken: 'bad_id' } | null {
+  let el: HTMLElement | null = closer.parentElement;
+  let climbed = 0;
+  while (el && el !== document.body) {
+    if (isBlock(el)) {
+      const text = el.innerText ?? el.textContent ?? '';
+      // Our closing marker is the n-th visible one in this block.
+      const n = candidateClosers(el).indexOf(closer);
+      const closeRe = /::ZOREAL-SIGNATURE:([0-9A-Za-z]{1,64})::/g;
+      let close: RegExpExecArray | null = null;
+      for (let i = 0; i <= n; i++) { close = closeRe.exec(text); if (!close) break; }
+      if (n >= 0 && close) {
+        const openRe = /::ZOREAL-(MARK|DELEGATED)::/g;
+        let open: RegExpExecArray | null = null;
+        let m: RegExpExecArray | null;
+        while ((m = openRe.exec(text)) && m.index < close.index) open = m;
+        if (open) {
+          const id = close[1]!;
+          if (!isValidId(id)) return { broken: 'bad_id' };
+          return { mark: { marker: open[1] === 'DELEGATED' ? 'delegated' : 'signed', text: text.slice(open.index + open[0].length, close.index).trim(), id, start: open.index, end: close.index + close[0].length } };
+        }
+      }
+      if (++climbed >= CLIMB_LIMIT || text.length > CLIMB_TEXT_LIMIT) break;
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
+
 function scan(root: Node = document.body): void {
   const found: { mark: FoundMark; node: Text }[] = [];
   for (const node of candidateNodes(root)) {
     processed.add(node);
-    const block = blockOf(node);
-    const blockText = block.innerText ?? block.textContent ?? '';
-    const marks = findMarks(blockText);
-    if (marks.length === 0) {
-      const broken = findBrokenMarkers(blockText);
-      if (broken.length > 0) placeBrokenBadge(node, broken[0]!.reason);
-      continue;
-    }
-    // The badge goes after the text node that holds the closing marker. When
-    // one block holds several Marks, each closing marker gets its own badge
-    // in order of appearance.
-    const closers = candidateClosers(block);
-    for (let i = 0; i < marks.length; i++) {
-      const closer = closers[i] ?? node;
-      if (processed.has(closer) && closer !== node) continue;
-      processed.add(closer);
-      found.push({ mark: marks[i]!, node: closer });
-    }
+    const r = markFor(node);
+    if (!r) continue;
+    if ('broken' in r) { placeBrokenBadge(node, r.broken); continue; }
+    found.push({ mark: r.mark, node });
   }
   log('scan', root === document.body ? 'document' : (root as Element).tagName ?? root.nodeName, 'found', found.length, 'mark(s)', adopted ? `(${adopted} already badged by an earlier copy, left alone)` : '');
   adopted = 0;
@@ -284,11 +311,17 @@ function placeBrokenBadge(node: Text, reason: 'no_closing_marker' | 'bad_id'): v
   node.parentNode?.insertBefore(host, node.nextSibling);
 }
 
+/** The visible closing-marker text nodes in a block, in document order: the same set innerText shows. */
 function candidateClosers(block: HTMLElement): Text[] {
   const out: Text[] = [];
   const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
   let n: Node | null;
-  while ((n = walker.nextNode())) if (n.nodeValue?.includes(CLOSE)) out.push(n as Text);
+  while ((n = walker.nextNode())) {
+    if (!n.nodeValue?.includes(CLOSE)) continue;
+    const p = n.parentElement;
+    if (p?.closest('[data-zoreal-marker], [data-zoreal-mark-host], script, style, noscript')) continue;
+    out.push(n as Text);
+  }
   return out;
 }
 

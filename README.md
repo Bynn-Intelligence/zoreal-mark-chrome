@@ -251,6 +251,19 @@ dev/
 
 ### Contributing
 
+Contributions are welcome, and the one we need most is `sites.json`. Every site people
+write on, in every country, should have an entry, and selectors rot whenever a site
+redesigns, so an entry is only as good as the last person who checked it. Add or fix one
+with a pull request that names the page you checked and the date. Boxes inside a closed
+shadow root cannot be reached by a selector; say so in the entry if you find one.
+
+Wanted, with no entry yet: Weibo, Bilibili, Xiaohongshu, Zhihu, Douyin and Kuaishou on
+the web; Naver Blog and Naver Cafe, Daum Cafe, DC Inside; LINE VOOM, Yahoo Japan
+comments, niconico; OK.ru; Tumblr; Kick, Rumble; Truth Social, Gab; Flashback; and the
+forum software that runs thousands of sites (Discourse, XenForo, phpBB, vBulletin), one
+domain at a time. The entries for TikTok, VK, Quora, Medium, Substack, Pinterest and
+Nextdoor were written from memory of those sites and need a check by someone on them.
+
 Before every commit, read added lines as a stranger would. Nothing in this repository
 references a private repository, an internal hostname, a local path, or an internal
 document. Engineering reasons stay; internal pointers go.

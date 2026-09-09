@@ -1,47 +1,72 @@
-# A tag v<version> builds that version, attaches the package to a GitHub
-# release for anyone who installs by hand, and, when the store secrets are
-# set, uploads it to the Chrome Web Store and publishes. The tag must match
-# the manifest version. Without the secrets the store step is skipped and the
-# GitHub release still happens.
+# Releases.
+#
+# Two ways in:
+#   - Run this workflow by hand (Actions, "Release", "Run workflow") with a
+#     level: patch, minor or major. It bumps the version in package.json, which
+#     the manifest reads, commits, tags v<version>, and carries on below.
+#   - Push a tag v<version> yourself; the bump is skipped and the tag must
+#     match the manifest version.
+#
+# Either way: build, check, pack, a GitHub release with the zip for hand
+# installs, and, when the store secrets are set, an upload to the Chrome Web
+# Store that publishes after review. Users receive it on their browser's next
+# update check without doing anything.
 #
 # Secrets (repository settings):
 #   CWS_EXTENSION_ID   the item id the store assigned at the first, manual upload
 #   CWS_CLIENT_ID      an OAuth client (Desktop) in a Google Cloud project with the
 #   CWS_CLIENT_SECRET  Chrome Web Store API enabled, owned by the publisher account
 #   CWS_REFRESH_TOKEN  a refresh token for that client, obtained once by hand
-#
-# The store reviews every uploaded version before it goes live; a version whose
-# permissions did not change is usually through within a day. Users receive it
-# on their browser's next update check, without doing anything.
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: Version bump
+        type: choice
+        default: patch
+        options: [patch, minor, major]
   push:
     tags: ['v*']
 
+concurrency: release
+
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Bump the version, commit and tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npm version "${{ inputs.level }}" -m "Release v%s"
+          git push --follow-tags origin HEAD:main
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
       - name: The tag names the manifest version
+        id: version
         run: |
           v=$(node -p "require('./dist/manifest.json').version")
-          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} but manifest version $v"; exit 1; }
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "v$v" != "${GITHUB_REF_NAME}" ]; then echo "tag ${GITHUB_REF_NAME} but manifest version $v"; exit 1; fi
+          echo "tag=v$v" >> "$GITHUB_OUTPUT"
       - run: npm run pack
       - name: GitHub release with the package, for manual installs
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
           files: release/*.zip
           generate_release_notes: true
           body: |
