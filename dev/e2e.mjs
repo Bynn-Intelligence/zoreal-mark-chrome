@@ -71,6 +71,7 @@ try {
     // The demo page renders every case; cases that reuse one id with different text or page cannot all be right at once,
     // so only compare cases whose text and page match what the demo shows.
     if (c.pageUrl !== null && !String(c.pageUrl).startsWith('https://www.youtube.com') && !String(c.pageUrl).startsWith('https://app.slack.com') && c.pageUrl !== 'https://example.org/repost' && c.pageUrl !== `${MOCK}/demo`) continue;
+    if (c.name === 'ok-showcase-here') continue; // bound to /showcase, rendered there, not on the demo page
     const got = c.name === 'fail-1-bad-id' ? byId.get('broken') : byId.get(c.id);
     if (!got) { console.log(`  MISSING ${c.name}`); failures++; continue; }
     // On the demo page every page-bound record is "for another page", because the demo is not the page it was signed for.

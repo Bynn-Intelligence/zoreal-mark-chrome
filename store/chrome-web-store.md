@@ -76,6 +76,8 @@ ZOREAL Privacy Notice; the matching terms are at `https://zoreal.com/terms/mark-
 ## Assets
 
 - Icon 128 x 128: `public/icons/icon-128.png`
-- Screenshots, 1280 x 800, at least one: a page with verified Marks and the hover card
-  open; the popup folded to counts; the signing QR beside a text box.
+- Screenshots, 1280 x 800, in `store/screenshots/`: `1-verified-with-card.png` (a
+  comment thread with a verified Mark and the hover card open), `2-popup.png` (the
+  popup folded to counts), `3-sign-with-phone.png` (the signing QR). Upload in that
+  order.
 - Small promo tile 440 x 280, optional.

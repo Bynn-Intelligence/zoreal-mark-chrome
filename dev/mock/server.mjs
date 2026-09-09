@@ -75,6 +75,43 @@ createServer(async (req, res) => {
     return res.end(JSON.stringify(r));
   }
   if (req.method === 'GET' && (url.pathname === '/pki/dev-anchors' || url.pathname === '/dev/anchors')) return json(res, 200, anchors);
+  // A realistic comment thread, for screenshots: one comment signed for this
+  // very page, one signed for another page, one plain. Nothing here is a
+  // real site; the names are invented.
+  if (req.method === 'GET' && url.pathname === '/showcase') {
+    const here = cases.find((c) => c.name === 'ok-showcase-here');
+    const other = cases.find((c) => c.name === 'ok-page');
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Council vote on the harbour plan passes 7 to 4</title>
+<style>
+  body { margin: 0; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1a1a1a; background: #fff; }
+  .top { border-bottom: 1px solid #e5e5e5; padding: 14px 0; }
+  .wrap { width: 720px; margin: 0 auto; }
+  .masthead { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 28px 0 8px; letter-spacing: -0.02em; }
+  .byline { color: #666; font-size: 14px; margin-bottom: 24px; }
+  p.lede { font-size: 17px; line-height: 1.55; color: #333; }
+  h2 { font-size: 18px; margin: 36px 0 14px; }
+  .comment { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 16px 0; border-top: 1px solid #eee; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: #d9dee5; }
+  .who { font-weight: 600; font-size: 14px; } .when { color: #888; font-size: 12px; margin-left: 8px; }
+  .comment p { margin: 6px 0; font-size: 15px; line-height: 1.5; }
+</style></head><body>
+<div class="top"><div class="wrap masthead">The Harbour Gazette</div></div>
+<div class="wrap">
+<h1>Council vote on the harbour plan passes 7 to 4</h1>
+<div class="byline">By staff reporter &middot; 9 September 2026</div>
+<p class="lede">The redevelopment plan for the eastern harbour passed its final reading on Tuesday evening after three hours of debate, with the mayor casting the deciding vote after a tie on the amended budget.</p>
+<h2>14 comments</h2>
+<div class="comment"><div class="avatar"></div><div><span class="who">M. Lindqvist</span><span class="when">2 hours ago</span>
+<p>::ZOREAL-MARK::</p><p>${esc(here.text)}</p><p>::ZOREAL-SIGNATURE:${esc(here.id)}::</p></div></div>
+<div class="comment"><div class="avatar"></div><div><span class="who">harbourwatch</span><span class="when">1 hour ago</span>
+<p>Seven to four is not what the minutes will say. Wait for the minutes.</p></div></div>
+<div class="comment"><div class="avatar"></div><div><span class="who">A. Reyes</span><span class="when">40 minutes ago</span>
+<p>::ZOREAL-MARK:: ${esc(other.text)} ::ZOREAL-SIGNATURE:${esc(other.id)}::</p></div></div>
+</div></body></html>`);
+    return;
+  }
   // The demo inside an iframe, the way a dashboard embeds an editor: the
   // extension must find the Marks and the box in the frame, not the page.
   if (req.method === 'GET' && url.pathname === '/demo-frame') {
