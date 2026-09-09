@@ -247,6 +247,47 @@ URL. Verifying fetches a public record by id, anonymously. The extension keeps n
 of what you verified beyond a cache of the records themselves, and sends nothing else
 unless you turn sighting reports on.
 
+## Try it on this page
+
+With the extension installed, this README is a test page: every Mark below gets a badge
+as soon as the page loads, and the popup lists them. Hover a badge for the card.
+
+A Mark as it is posted, each marker on its own line:
+
+::ZOREAL-MARK::
+
+keso njure
+
+::ZOREAL-SIGNATURE:GKJQTMHEDSG0RRV6VQS4ACXP::
+
+The same format on one line:
+
+::ZOREAL-MARK:: keso e gott ::ZOREAL-SIGNATURE:XCTZ18HAB05B5RJB938NB20J::
+
+A Mark whose text was changed after signing (the record says "kebab"), which must read
+**Not verified**, the text was altered:
+
+::ZOREAL-MARK:: kebab, but with extra words nobody signed ::ZOREAL-SIGNATURE:CDXD81FMWQPT8RGG8C8PK5BW::
+
+A Mark cut short by a platform that truncates long posts, so the id is incomplete. This
+one needs no server at all and reads **No signature found**:
+
+::ZOREAL-MARK:: this post was longer than the platform allowed ::ZOREAL-SIGNATURE:GKJQTMHEDSG0RR::
+
+An id of the right length that is not one: Crockford base32 never uses I, L, O or U, so
+this also reads **No signature found** without a server:
+
+::ZOREAL-MARK:: a plausible sentence ::ZOREAL-SIGNATURE:0000000000000000000000IL::
+
+A post whose closing marker was cut off entirely shows nothing: the extension keys on
+the signature marker, so a Mark with no signature marker is just text.
+
+The three real Marks above were signed with a ZOREAL ID in the lab, for pages of a local
+development setup. Against the public record service, which is not live yet, they read
+**Cannot verify now**, which is honest: the record cannot be fetched. Once the service is
+live they will be re-signed here, bound to this very page, and read **Verified by
+ZOREAL**. For every verdict today, run the local demo in [Development](#development).
+
 ## License
 
 MIT
