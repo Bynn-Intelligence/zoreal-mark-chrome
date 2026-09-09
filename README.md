@@ -183,6 +183,9 @@ not listed still signs from the toolbar and the context menu.
 day. It installs on Chrome, Edge, Brave, Vivaldi, Arc and Opera, and updates itself
 silently on the browser's next update check after a new version passes review.
 
+**From Microsoft Edge Add-ons**, once that listing is live, for Edge users who prefer
+their own store: the same package, the same updates.
+
 **By hand**, from a release, for anyone who wants to run the code they can read or does
 not want to wait for the store:
 
@@ -236,10 +239,11 @@ Until `@zoreal/mark-verify` is on npm, link it from a local checkout with `npm l
 
 ### Releasing
 
-CI typechecks, tests, builds and packs on every push. A tag `v<version>` matching the
-manifest version builds, uploads to the Chrome Web Store, publishes, and attaches the
-package to a GitHub release; see `.github/workflows/release.yml` for the secrets it
-needs and `store/chrome-web-store.md` for the listing text.
+CI typechecks, tests, builds and packs on every push. Every push to main that touches
+the code bumps the patch version, tags it, builds, attaches the package to a GitHub
+release, and uploads it to the Chrome Web Store and to Microsoft Edge Add-ons, where it
+publishes after each store's review. See `.github/workflows/release.yml` for the secrets
+it needs, and `store/` for each listing's text and assets.
 
 ### Layout
 
@@ -253,7 +257,7 @@ src/
   options/        Record service origin and API prefix, sighting reports
   ui/             Shared DOM helpers, styles, inlined Lucide icons
 sites.json        Community-maintained: where the post and comment boxes are, per site
-store/            The Chrome Web Store listing text and permission justifications
+store/            The store listings: text, permission justifications, icons, screenshots
 scripts/          Icon rendering and packaging
 dev/
   mock/           Local record server over the conformance fixtures, with the demo page at /demo

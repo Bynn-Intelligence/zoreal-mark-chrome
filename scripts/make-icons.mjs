@@ -48,4 +48,18 @@ try {
 } finally {
   unlinkSync(storeTmp);
 }
+
+// Edge Add-ons logo: 300 px square, no padding rule, so the tile fills the
+// canvas the way the app icon fills a launcher.
+const logo = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="300" height="300">
+<rect x="0" y="0" width="96" height="96" rx="20" fill="${INK}"/>
+<svg x="${(96 - glyph) / 2}" y="${(96 - glyph) / 2}" width="${glyph}" height="${glyph}" viewBox="${FILLED_VIEWBOX}">${inner}</svg>
+</svg>`;
+const logoTmp = 'store/.logo-300.svg';
+writeFileSync(logoTmp, logo);
+try {
+  execFileSync('rsvg-convert', ['-w', '300', '-h', '300', logoTmp, '-o', 'store/logo-300.png']);
+} finally {
+  unlinkSync(logoTmp);
+}
 console.log('icons written');
