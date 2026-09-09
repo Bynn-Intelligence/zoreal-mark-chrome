@@ -16,7 +16,10 @@ jobs:
           cache: npm
       - name: Fetch git dependencies over HTTPS
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-      - run: npm ci
+      # npm install, not npm ci: the lockfile is written on a Mac and carries only
+      # that platform's native binding for the bundler; ci refuses to add the
+      # Linux one, install adds it and keeps every locked version.
+      - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
