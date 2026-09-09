@@ -208,6 +208,10 @@ function placeBadge(node: Text, mark: FoundMark, ordinal: number): Render {
   // The closing marker is now the tail of `node`, from `m.index`: cut it into
   // its own text node so it can be hidden once the verdict is strong.
   const closingMarker = m ? node.splitText(m.index) : null;
+  // The cut-off marker is a new text node carrying the closing marker, and
+  // the observer rescans after every badge is placed: unmarked, it would be
+  // found again, cut again, and badged again without end.
+  if (closingMarker) processed.add(closingMarker);
   const host = document.createElement('span');
   host.setAttribute('data-zoreal-mark-host', mark.id);
   host.setAttribute('data-zoreal-ordinal', String(ordinal));

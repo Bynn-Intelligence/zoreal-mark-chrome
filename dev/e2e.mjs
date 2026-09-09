@@ -57,6 +57,11 @@ try {
   const byId = new Map();
   for (const [id, v, reason] of verdicts) byId.set(id, (byId.get(id) ?? new Set()).add(v + (reason ? ` (${reason})` : '')));
   console.log(`${verdicts.length} verdicts rendered`);
+  // The observer rescans after every badge; the count must settle. A badge
+  // count still climbing two seconds later is the scanner feeding itself.
+  await new Promise((r) => setTimeout(r, 2000));
+  const settled = await page.$$eval('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"])', (els) => els.length);
+  if (settled !== verdicts.length) { console.log(`  WRONG: badge count moved from ${verdicts.length} to ${settled} after the scan; the scanner is rescanning its own output`); process.exitCode = 1; }
 
   let failures = 0;
   for (const c of cases.filter((c) => c.pageUrl !== undefined && c.text !== undefined)) {
