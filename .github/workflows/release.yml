@@ -4,8 +4,9 @@
 # bumped in package.json (which the manifest reads), committed, tagged
 # v<version>, built, checked, packed, published as a GitHub release with the
 # zip for hand installs, and, when the store secrets are set, uploaded to the
-# Chrome Web Store and to Microsoft Edge Add-ons and published after review.
-# Users receive it on their browser's next update check without doing anything.
+# Chrome Web Store and published after review. The Edge listing is fed from the
+# release by its own repository, zoreal-mark-edge. Users receive it on their
+# browser's next update check without doing anything.
 #
 # Two other ways in: run the workflow by hand with a level of minor or major
 # for a bigger bump; or push a tag v<version> yourself, which skips the bump
@@ -20,9 +21,6 @@
 #   CWS_CLIENT_ID      an OAuth client (Desktop) in a Google Cloud project with the
 #   CWS_CLIENT_SECRET  Chrome Web Store API enabled, owned by the publisher account
 #   CWS_REFRESH_TOKEN  a refresh token for that client, obtained once by hand
-#   EDGE_PRODUCT_ID    the GUID Partner Center assigned at the first, manual upload
-#   EDGE_CLIENT_ID     from the Publish API page in Partner Center
-#   EDGE_API_KEY       from the same page; it expires and is renewed there
 name: Release
 
 on:
@@ -117,15 +115,3 @@ jobs:
             --client-secret "$CWS_CLIENT_SECRET" \
             --refresh-token "$CWS_REFRESH_TOKEN" \
             --auto-publish
-      - name: Are the Edge secrets set
-        id: edge
-        env:
-          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
-        run: echo "present=$([ -n "$EDGE_PRODUCT_ID" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - name: Upload to Microsoft Edge Add-ons and publish
-        if: steps.edge.outputs.present == 'true'
-        env:
-          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
-          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
-          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
-        run: node scripts/edge-publish.mjs release/*.zip

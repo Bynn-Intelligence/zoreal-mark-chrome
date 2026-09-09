@@ -184,7 +184,8 @@ day. It installs on Chrome, Edge, Brave, Vivaldi, Arc and Opera, and updates its
 silently on the browser's next update check after a new version passes review.
 
 **From Microsoft Edge Add-ons**, once that listing is live, for Edge users who prefer
-their own store: the same package, the same updates.
+their own store: the same package, the same updates, submitted from each release by
+[zoreal-mark-edge](https://github.com/Bynn-Intelligence/zoreal-mark-edge).
 
 **By hand**, from a release, for anyone who wants to run the code they can read or does
 not want to wait for the store:
@@ -241,9 +242,10 @@ Until `@zoreal/mark-verify` is on npm, link it from a local checkout with `npm l
 
 CI typechecks, tests, builds and packs on every push. Every push to main that touches
 the code bumps the patch version, tags it, builds, attaches the package to a GitHub
-release, and uploads it to the Chrome Web Store and to Microsoft Edge Add-ons, where it
-publishes after each store's review. See `.github/workflows/release.yml` for the secrets
-it needs, and `store/` for each listing's text and assets.
+release, and uploads it to the Chrome Web Store, where it publishes after review. See
+`.github/workflows/release.yml` for the secrets it needs and `store/` for the listing's
+text and assets. The Microsoft Edge Add-ons listing takes the same package from the
+release through [zoreal-mark-edge](https://github.com/Bynn-Intelligence/zoreal-mark-edge).
 
 ### Layout
 
