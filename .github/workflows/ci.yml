@@ -23,8 +23,8 @@ jobs:
       # bundler version.
       - run: |
           npm install --no-save --no-audit --no-fund \
-            "@rolldown/binding-linux-x64-gnu@$(node -p "require('rolldown/package.json').version")" \
-            "lightningcss-linux-x64-gnu@$(node -p "require('lightningcss/package.json').version")"
+            "@rolldown/binding-linux-x64-gnu@$(node -p "JSON.parse(require('fs').readFileSync('node_modules/rolldown/package.json','utf8')).version")" \
+            "lightningcss-linux-x64-gnu@$(node -p "JSON.parse(require('fs').readFileSync('node_modules/lightningcss/package.json','utf8')).version")"
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
