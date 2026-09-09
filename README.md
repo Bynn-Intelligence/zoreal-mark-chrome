@@ -202,7 +202,9 @@ not want to wait for the store:
    icon on the extension's card. A hand-installed copy does not update itself.
 
 Edge, Brave, Vivaldi, Arc and Opera take the same zip the same way through their own
-extensions page. Firefox and Safari are separate packages and are not built yet.
+extensions page. Firefox is a separate package,
+[zoreal-mark-firefox](https://github.com/Bynn-Intelligence/zoreal-mark-firefox), built
+from this source. Safari is not built yet.
 
 ## Development
 
