@@ -111,12 +111,19 @@ export class RecordService {
 
 const CACHE_PREFIX = 'rec:';
 const PENDING_TTL_MS = 60_000;
+/**
+ * A confirmed record's core never changes, but a withdrawal or an appended
+ * event can land on it at any time and a reader must see it within hours,
+ * not never. Six hours between refetches of a record already verified.
+ */
+const CONFIRMED_TTL_MS = 6 * 60 * 60 * 1000;
 
 async function readCache(id: string): Promise<unknown | undefined> {
   const got = await chrome.storage.local.get(CACHE_PREFIX + id);
   const entry = got[CACHE_PREFIX + id] as { record: unknown; storedAt: number; immutable: boolean } | undefined;
   if (!entry) return undefined;
-  if (!entry.immutable && Date.now() - entry.storedAt > PENDING_TTL_MS) return undefined;
+  const age = Date.now() - entry.storedAt;
+  if (age > (entry.immutable ? CONFIRMED_TTL_MS : PENDING_TTL_MS)) return undefined;
   return entry.record;
 }
 
