@@ -139,7 +139,14 @@ record service the id and the URL when it finds a Mark verified for another page
 signer who asked to be alerted when their words are moved can be. It sends nothing about
 you. Off by default.
 
-## Signing
+## How do I sign a post?
+
+You need ZOREAL ID on your phone. It is free, and enrolling takes about a minute: get the
+app at [zoreal.com](https://zoreal.com), read your passport or ID card with the phone,
+match your face to it, and pass a liveness check. From then on you can sign anything you
+write, on any site, as often as you like, at no cost.
+
+Then, with this extension installed:
 
 1. Write your text. On sites in the community list the sign control appears beside the
    box; anywhere else, open the extension from the toolbar with the cursor in the box, or
@@ -150,7 +157,10 @@ you. Off by default.
 3. Scan the code with ZOREAL ID, or with the phone's own camera, which opens the app. On a
    phone, the extension opens the app directly.
 4. Read the text on your phone, slide to sign, and confirm with your fingerprint or face.
-   The extension writes the Mark into the box.
+   The extension writes the Mark into the box. Post it as you would anything else.
+
+The first signature on a new site costs one extra confirmation while your phone makes a
+key for that site; every later one is one confirmation.
 
 The code changes every second and a frame more than thirty seconds old is refused, so a
 screenshot of it relayed to someone else is useless. There is nothing to set up and

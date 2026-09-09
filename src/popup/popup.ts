@@ -100,6 +100,11 @@ async function renderHome(): Promise<void> {
   await renderSignStart(tab);
 }
 
+/** Signing needs ZOREAL ID on the phone; a reader without it is one minute and no money away from it. */
+function getIdHtml(): string {
+  return `<div class="getid">No ZOREAL ID yet? It is free and takes a minute: get the app at <a href="https://zoreal.com" target="_blank" rel="noopener">zoreal.com</a>, verify once, and sign anything you write from then on.</div>`;
+}
+
 async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> {
   const box = document.getElementById('sign')!;
   let target: SignTarget | null = null;
@@ -127,7 +132,7 @@ async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> 
     return;
   }
   if (!target || !target.found) {
-    box.innerHTML = `<div class="empty"><b>Put the cursor in the text box you are writing in</b>, then open this again. On listed sites a sign control appears beside the box; everywhere else this works from the toolbar or the context menu.</div>`;
+    box.innerHTML = `<div class="empty"><b>Put the cursor in the text box you are writing in</b>, then open this again. On listed sites a sign control appears beside the box; everywhere else this works from the toolbar or the context menu.</div>${getIdHtml()}`;
     return;
   }
   const text = target.text.trim();
@@ -144,7 +149,8 @@ async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> 
       <label><input type="radio" name="identity" value="legal_name" /><span><span class="name">Your legal name</span><br/><span class="desc">Your name and document number, verified against your passport or ID card.</span></span></label>
     </div>
     <div class="warn" id="warn" hidden>${icon('triangle-alert')}<span>A legal-name Mark is public and permanent. It can be withdrawn, never deleted, and the record stays on a public URL. Your phone will ask you to confirm this a second time.</span></div>
-    <div class="row"><button class="primary" id="go">${icon('qr-code')}<span>Sign with ZOREAL ID</span></button></div>`;
+    <div class="row"><button class="primary" id="go">${icon('qr-code')}<span>Sign with ZOREAL ID</span></button></div>
+    ${getIdHtml()}`;
   box.querySelectorAll('input[name="identity"]').forEach((el) => el.addEventListener('change', () => {
     document.getElementById('warn')!.hidden = (box.querySelector('input[name="identity"]:checked') as HTMLInputElement).value !== 'legal_name';
   }));
@@ -219,6 +225,7 @@ async function runSignFlow(tab: chrome.tabs.Tab, target: SignTarget, text: strin
   box.innerHTML = `<div class="qr">
       <button class="frame" id="frame" aria-label="QR code for ZOREAL ID. Press to enlarge."><canvas id="qr" width="200" height="200"></canvas></button>
       <div class="status" id="status">${icon('smartphone')}<span>Scan with ZOREAL ID</span></div>
+      ${getIdHtml()}
       <div class="countdown" id="countdown"></div>
       ${mobile ? `<a class="link" id="launch" href="${esc(launchLink(order.order, order.start_token, key))}">Open ZOREAL ID on this phone</a>` : ''}
       <button id="cancel">Cancel</button>
