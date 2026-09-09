@@ -1,18 +1,25 @@
 import type { Settings } from './messages.js';
 
 export const DEFAULT_SETTINGS: Settings = {
-  // The API origin. Records are the same bytes at https://zoreal.com/mark/<id>,
-  // which is the URL a person opens; the extension fetches them from the API
-  // directly and creates its orders there.
+  // The API origin: orders are created and polled here.
   baseUrl: 'https://api.zoreal.com',
   apiPrefix: '/v1',
+  // The record host. A record is https://mark.zoreal.com/<id>, the same URL a
+  // person opens. Its own name, so record checks can be balanced and cached
+  // apart from the API. A local setup uses http://localhost:<port>/mark.
+  recordBase: 'https://mark.zoreal.com',
   sightings: false,
 };
 
 export async function loadSettings(): Promise<Settings> {
   const got = await chrome.storage.local.get('settings');
   const s = (got.settings ?? {}) as Partial<Settings>;
-  return { ...DEFAULT_SETTINGS, ...s, apiPrefix: normalisePrefix(s.apiPrefix ?? DEFAULT_SETTINGS.apiPrefix) };
+  const merged = { ...DEFAULT_SETTINGS, ...s, apiPrefix: normalisePrefix(s.apiPrefix ?? DEFAULT_SETTINGS.apiPrefix) };
+  // Settings saved before the record host existed: a local API origin
+  // served its records at /mark, and still does.
+  if (!s.recordBase && s.baseUrl && isLocalDev(s.baseUrl)) merged.recordBase = `${s.baseUrl.replace(/\/$/, '')}/mark`;
+  merged.recordBase = merged.recordBase.replace(/\/+$/, '');
+  return merged;
 }
 
 /** "/v1" or "/api/v1": a leading slash, no trailing one. */

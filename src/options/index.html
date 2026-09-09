@@ -23,9 +23,13 @@
     <header style="display:flex;align-items:center;gap:10px"><img src="/icons/icon-32.png" width="28" height="28" alt="" /><h1 class="display">ZOREAL Mark</h1></header>
     <section>
       <h2 class="mrz">Record service</h2>
-      <p>Where records are fetched from. Records are public and immutable; they are fetched without credentials and cached.</p>
+      <p>Where records are fetched from. Records are public; they are fetched without credentials and cached.</p>
+      <div class="field"><input id="recordBase" type="url" spellcheck="false" /></div>
+      <div class="note">Default <code>https://mark.zoreal.com</code>: a record is that address plus its id, the same page a person opens. A local setup uses <code>http://localhost:&lt;port&gt;/mark</code>.</div>
+      <h2 class="mrz" style="margin-top:14px">API</h2>
+      <p>Where sign orders are created and polled.</p>
       <div class="field"><input id="baseUrl" type="url" spellcheck="false" /></div>
-      <div class="note">Default <code>https://api.zoreal.com</code>, the same records a person opens at <code>zoreal.com/mark/&lt;id&gt;</code>. A <code>localhost</code> origin is a development server and the only case in which trust anchors are read from the service.</div>
+      <div class="note">Default <code>https://api.zoreal.com</code>. A <code>localhost</code> origin is a development server and the only case in which trust anchors are read from the service.</div>
       <div class="field"><input id="apiPrefix" type="text" spellcheck="false" placeholder="/v1" /></div>
       <div class="note">Where the API is mounted on that origin: <code>/v1</code> in production, <code>/api/v1</code> on a local Rails.</div>
     </section>

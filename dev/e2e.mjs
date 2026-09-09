@@ -39,6 +39,7 @@ try {
   await options.goto(`chrome-extension://${extId}/src/options/index.html`);
   await options.waitForSelector('#baseUrl');
   await options.$eval('#baseUrl', (el, v) => { el.value = v; }, MOCK);
+  await options.$eval('#recordBase', (el, v) => { el.value = v; }, `${MOCK}/mark`);
   // An in-page click: this Chrome for Testing build dies on a CDP mouse click
   // into an extension page (seen 2026-09-09; the browser exits, not the page).
   await options.evaluate(() => document.getElementById('save').click());

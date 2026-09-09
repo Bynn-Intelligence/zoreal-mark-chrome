@@ -217,8 +217,9 @@ npm run mock       # Local record server serving the conformance fixtures on por
 
 Load `dist/` as an unpacked extension at `chrome://extensions` with Developer mode on, and
 reload it there after every build. Use `npm run build:local` or `npm run dev` for a build
-that may reach localhost; a release build refuses to. Point the options page at `http://localhost:4820` to
-verify against the mock, and open `http://localhost:4820/demo` for a page carrying one
+that may reach localhost; a release build refuses to. Point the options page's record host at
+`http://localhost:4820/mark` and its API at `http://localhost:4820` to verify against the
+mock, and open `http://localhost:4820/demo` for a page carrying one
 Mark per conformance case, plus one signed for that very page so a strong verdict can be
 seen. `/demo-frame` is the same page inside an iframe.
 

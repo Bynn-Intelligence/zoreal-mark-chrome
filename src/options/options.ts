@@ -3,6 +3,7 @@ import type { Settings } from '../shared/messages.js';
 
 const send = <T,>(msg: unknown): Promise<T> => chrome.runtime.sendMessage(msg) as Promise<T>;
 const baseUrl = document.getElementById('baseUrl') as HTMLInputElement;
+const recordBase = document.getElementById('recordBase') as HTMLInputElement;
 const apiPrefix = document.getElementById('apiPrefix') as HTMLInputElement;
 const sightings = document.getElementById('sightings') as HTMLInputElement;
 const status = document.getElementById('status')!;
@@ -15,6 +16,7 @@ document.getElementById('pins')!.textContent = [
 
 const s = await send<Settings>({ type: 'getSettings' });
 baseUrl.value = s.baseUrl;
+recordBase.value = s.recordBase;
 apiPrefix.value = s.apiPrefix;
 sightings.checked = s.sightings;
 
@@ -28,8 +30,18 @@ document.getElementById('save')!.addEventListener('click', async () => {
     status.textContent = e instanceof Error ? e.message : 'not a URL';
     return;
   }
-  await send({ type: 'saveSettings', settings: { baseUrl: origin, apiPrefix: apiPrefix.value.trim() || '/v1', sightings: sightings.checked } });
+  let records: string;
+  try {
+    const r = new URL(recordBase.value.trim());
+    if (r.protocol !== 'https:' && r.hostname !== 'localhost' && r.hostname !== '127.0.0.1') throw new Error('the record host must be https');
+    records = r.href.replace(/\/+$/, '');
+  } catch (e) {
+    status.textContent = e instanceof Error ? e.message : 'the record host is not a URL';
+    return;
+  }
+  await send({ type: 'saveSettings', settings: { baseUrl: origin, apiPrefix: apiPrefix.value.trim() || '/v1', recordBase: records, sightings: sightings.checked } });
   baseUrl.value = origin;
+  recordBase.value = records;
   status.textContent = 'Saved';
   status.className = 'note ok';
 });

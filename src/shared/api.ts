@@ -32,14 +32,14 @@ const budget = {
 };
 
 export class RecordService {
-  constructor(private readonly baseUrl: string, private readonly apiPrefix = '/v1') {}
+  constructor(private readonly baseUrl: string, private readonly apiPrefix = '/v1', private readonly recordBase = 'https://mark.zoreal.com') {}
 
   private api(path: string): string {
     return `${this.baseUrl.replace(/\/$/, '')}${this.apiPrefix}${path}`;
   }
 
   recordUrl(id: string): string {
-    return `${this.baseUrl.replace(/\/$/, '')}/mark/${id}`;
+    return `${this.recordBase.replace(/\/+$/, '')}/${id}`;
   }
 
   async fetchRecord(id: string): Promise<FetchResult> {

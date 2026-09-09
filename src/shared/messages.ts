@@ -33,8 +33,10 @@ export type OrderStatus =
   | { status: 'failed'; reason: string };
 
 export interface Settings {
-  /** The record service origin. Records live at <origin>/mark/<id>. */
+  /** The API origin: sign orders and sightings. */
   baseUrl: string;
+  /** Where a record is fetched: `<recordBase>/<id>`. The record host has its own name so record checks can be balanced and cached apart from the API. */
+  recordBase: string;
   /** Where the API is mounted on that origin: `/v1` in production, `/api/v1` on a local Rails. */
   apiPrefix: string;
   /** Sighting reports on "Verified for another page". Off by default. */

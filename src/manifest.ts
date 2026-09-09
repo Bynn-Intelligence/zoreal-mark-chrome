@@ -52,6 +52,6 @@ export default defineManifest((env) => ({
     // A release talks to the record service and nothing else. A development
     // build (`npm run build:local`, `npm run dev`) may also reach a record
     // service on this machine: the mock on 4820 and a local API on 3000.
-    extension_pages: `script-src 'self'; object-src 'self'; connect-src https://zoreal.com https://api.zoreal.com${env.mode === 'production' ? '' : ' http://localhost:4820 http://localhost:3000'}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'`,
+    extension_pages: `script-src 'self'; object-src 'self'; connect-src https://mark.zoreal.com https://api.zoreal.com${env.mode === 'production' ? '' : ' http://localhost:4820 http://localhost:3000'}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'`,
   },
 }));

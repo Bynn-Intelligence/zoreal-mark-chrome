@@ -48,7 +48,7 @@ function demoPage(host) {
 <meta name="zoreal-mark" content="${esc(okPage.id)}">
 <style>body{font-family:system-ui,sans-serif;max-width:820px;margin:40px auto;padding:0 20px;color:#0E104F;line-height:1.5}li{margin:0 0 18px;list-style:none}.name{font-weight:600}.exp{font-weight:400;color:#697386;font-size:13px}p{background:#F6F9FC;padding:10px 12px;border-radius:12px}textarea{width:100%;min-height:90px;font:inherit;padding:10px;border:1px solid #C9D3DF;border-radius:12px}code{background:#F6F9FC;padding:1px 4px;border-radius:4px}</style></head><body>
 <h1>ZOREAL Mark demo</h1>
-<p>Fixture records served from <code>${esc(host)}</code>. Set the extension's record service to this origin in its settings. This page's <code>zoreal-mark</code> meta tag names the <code>ok-page</code> record, and the article below is its text, so the toolbar shows a page-level verdict too.</p>
+<p>Fixture records served from <code>${esc(host)}</code>. Set the extension's record host to this origin plus <code>/mark</code> and its API to this origin in its settings. This page's <code>zoreal-mark</code> meta tag names the <code>ok-page</code> record, and the article below is its text, so the toolbar shows a page-level verdict too.</p>
 <article data-zoreal-mark>${esc(okPage.text)}</article>
 <h2>Sign a text</h2>
 <p>The mock cannot sign: it has no keys. Type exactly the text below and the pretend order completes with the fixture record that carries that hash; anything else fails with a reason.</p>

@@ -228,11 +228,11 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
       return { frameId: await getFrame(msg.tabId) };
     case 'createOrder': {
       const s = await loadSettings();
-      return new RecordService(s.baseUrl, s.apiPrefix).createOrder(msg.body);
+      return new RecordService(s.baseUrl, s.apiPrefix, s.recordBase).createOrder(msg.body);
     }
     case 'pollOrder': {
       const s = await loadSettings();
-      return new RecordService(s.baseUrl, s.apiPrefix).pollOrder(msg.order);
+      return new RecordService(s.baseUrl, s.apiPrefix, s.recordBase).pollOrder(msg.order);
     }
     case 'getSettings':
       return loadSettings();
@@ -253,7 +253,7 @@ function pageUrlFor(sender: chrome.runtime.MessageSender, reported: string): str
 
 async function verifyOne(m: { marker: 'signed' | 'delegated'; text: string; id: string }, pageUrl: string): Promise<MarkSummary> {
   const settings = await loadSettings();
-  const service = new RecordService(settings.baseUrl, settings.apiPrefix);
+  const service = new RecordService(settings.baseUrl, settings.apiPrefix, settings.recordBase);
   const anchors = await anchorsFor(settings.baseUrl, service);
   const result: VerifyResult = await verifyMark(
     { marker: m.marker, text: m.text, id: m.id },
