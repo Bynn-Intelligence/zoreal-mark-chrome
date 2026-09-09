@@ -45,22 +45,22 @@ try {
 
   const page = await browser.newPage();
   await page.goto(`${MOCK}/demo`, { waitUntil: 'networkidle0' });
-  const hosts = await page.$$eval('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"])', (els) => els.map((e) => e.getAttribute('data-zoreal-mark-host')));
+  const hosts = await page.$$eval('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])', (els) => els.map((e) => e.getAttribute('data-zoreal-mark-host')));
   console.log(`${hosts.length} badges placed`);
 
   // Each badge writes its verdict on its host element once the background answers.
   await page.waitForFunction(() => {
-    const hosts = [...document.querySelectorAll('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"])')];
+    const hosts = [...document.querySelectorAll('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])')];
     return hosts.length > 0 && hosts.every((h) => h.hasAttribute('data-zoreal-verdict'));
   }, { timeout: 60000 });
-  const verdicts = await page.$$eval('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"])', (els) => els.map((e) => [e.getAttribute('data-zoreal-mark-host'), e.getAttribute('data-zoreal-verdict'), e.getAttribute('data-zoreal-reason')]));
+  const verdicts = await page.$$eval('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])', (els) => els.map((e) => [e.getAttribute('data-zoreal-mark-host'), e.getAttribute('data-zoreal-verdict'), e.getAttribute('data-zoreal-reason')]));
   const byId = new Map();
   for (const [id, v, reason] of verdicts) byId.set(id, (byId.get(id) ?? new Set()).add(v + (reason ? ` (${reason})` : '')));
   console.log(`${verdicts.length} verdicts rendered`);
   // The observer rescans after every badge; the count must settle. A badge
   // count still climbing two seconds later is the scanner feeding itself.
   await new Promise((r) => setTimeout(r, 2000));
-  const settled = await page.$$eval('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"])', (els) => els.length);
+  const settled = await page.$$eval('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])', (els) => els.length);
   if (settled !== verdicts.length) { console.log(`  WRONG: badge count moved from ${verdicts.length} to ${settled} after the scan; the scanner is rescanning its own output`); process.exitCode = 1; }
 
   let failures = 0;
@@ -95,7 +95,7 @@ try {
   if (!hidden || hidden.verdict !== 'verified_here' || hidden.markers !== 2 || hidden.markersVisible !== 0 || hidden.visibleText.includes('::ZOREAL')) { console.log('  WRONG: markers of a verified Mark still visible'); failures++; }
 
   // Hover the first badge for the card, and focus the demo box for the sign control.
-  await page.hover('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"])');
+  await page.hover('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])');
   await new Promise((r) => setTimeout(r, 400));
   await page.screenshot({ path: 'dev/screens/demo-hover.png' });
   await page.click('#demo-box');

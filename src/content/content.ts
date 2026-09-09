@@ -1,7 +1,7 @@
 import { findBrokenMarkers, findMarks, siteOf, wrap, type FoundMark } from '@zoreal/mark-verify';
 import type { ContentRequest, MarkSummary, SignTarget } from '../shared/messages.js';
 import { icon, subjectLine, verdictView } from '../ui/verdict.js';
-import { BADGE_CSS, SIGN_CONTROL_CSS } from './styles.js';
+import { BADGE_CSS, CARD_LAYER_CSS, SIGN_CONTROL_CSS } from './styles.js';
 import sites from '../../sites.json' with { type: 'json' };
 
 /**
@@ -156,6 +156,105 @@ function scan(root: Node = document.body): void {
     .catch((e: unknown) => { for (const r of slots) r(null, e instanceof Error ? e.message : 'the extension could not verify'); });
 }
 
+/**
+ * The one hover card on the page, in a layer at the document root, fixed
+ * from the badge it belongs to. Each badge keeps its own card CONTENT; the
+ * layer shows a copy of it while the pointer is on the badge or the card, or
+ * while the badge is pinned by a click. Scroll and resize move it with the
+ * badge; Escape and a click elsewhere close it.
+ */
+const cardLayer = (() => {
+  let host: HTMLElement | null = null;
+  let card: HTMLDivElement | null = null;
+  let owner: HTMLElement | null = null;
+  let pinned = false;
+  let hideTimer: number | undefined;
+
+  function ensure(): HTMLDivElement {
+    if (card && host?.isConnected) return card;
+    host = document.createElement('div');
+    host.setAttribute('data-zoreal-mark-host', 'card');
+    const shadow = host.attachShadow({ mode: 'closed' });
+    const style = document.createElement('style');
+    style.textContent = CARD_LAYER_CSS;
+    card = document.createElement('div');
+    card.className = 'card';
+    card.addEventListener('mouseenter', () => { if (hideTimer !== undefined) { clearTimeout(hideTimer); hideTimer = undefined; } });
+    card.addEventListener('mouseleave', () => { if (!pinned) hideSoon(); });
+    shadow.append(style, card);
+    document.documentElement.append(host);
+    window.addEventListener('scroll', () => { if (owner) place(); }, { passive: true, capture: true });
+    window.addEventListener('resize', () => { if (owner) place(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(true); });
+    document.addEventListener('click', (e) => { if (owner && !e.composedPath().includes(owner) && !e.composedPath().includes(host!)) hide(true); });
+    return card;
+  }
+
+  function place(): void {
+    if (!owner || !card) return;
+    if (!owner.isConnected) { hide(true); return; }
+    const rect = owner.getBoundingClientRect();
+    const width = Math.min(320, window.innerWidth * 0.9);
+    const height = card.offsetHeight || 200;
+    const gap = 6;
+    const right = rect.left + width > window.innerWidth - 8;
+    const above = rect.bottom + gap + height > window.innerHeight - 8 && rect.top - gap - height > 8;
+    const left = right ? Math.max(8, rect.right - width) : Math.max(8, rect.left);
+    const top = above ? rect.top - gap - height : rect.bottom + gap;
+    card.style.left = `${Math.round(left)}px`;
+    card.style.top = `${Math.round(top)}px`;
+    card.style.width = `${Math.round(width)}px`;
+    card.classList.toggle('right', right);
+    card.classList.toggle('above', above);
+  }
+
+  function show(badge: HTMLElement, html: string): void {
+    const c = ensure();
+    if (hideTimer !== undefined) { clearTimeout(hideTimer); hideTimer = undefined; }
+    if (owner !== badge) pinned = false;
+    owner = badge;
+    c.innerHTML = html;
+    c.classList.remove('shown');
+    place();
+    // Two frames: one to lay the new content out, one to start the transition.
+    requestAnimationFrame(() => { place(); c.classList.add('shown'); });
+  }
+
+  function hideSoon(): void {
+    if (hideTimer !== undefined) clearTimeout(hideTimer);
+    hideTimer = window.setTimeout(() => hide(false), 160);
+  }
+
+  function hide(force: boolean): void {
+    if (pinned && !force) return;
+    pinned = false;
+    owner = null;
+    card?.classList.remove('shown');
+  }
+
+  /** Wires a badge to the layer. `content` is read at show time, so a verdict that lands later is what the card shows. */
+  function attach(badge: HTMLElement, content: () => string): void {
+    badge.addEventListener('mouseenter', () => show(badge, content()));
+    badge.addEventListener('mouseleave', () => { if (!pinned) hideSoon(); });
+    badge.addEventListener('focus', () => show(badge, content()));
+    badge.addEventListener('blur', () => { if (!pinned) hideSoon(); });
+    const toggle = () => {
+      if (owner === badge && pinned) { hide(true); return; }
+      show(badge, content());
+      pinned = true;
+    };
+    badge.addEventListener('click', toggle);
+    badge.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  }
+
+  /** The content of the card now showing for `badge` is refreshed, when a verdict lands while it is open. */
+  function refresh(badge: HTMLElement, html: string): void {
+    if (owner === badge && card) { card.innerHTML = html; place(); }
+  }
+
+  return { attach, refresh };
+})();
+
 /** An opening marker that never became a Mark gets a neutral badge: no signature found. */
 function placeBrokenBadge(node: Text, reason: 'no_closing_marker' | 'bad_id'): void {
   const host = document.createElement('span');
@@ -167,10 +266,10 @@ function placeBrokenBadge(node: Text, reason: 'no_closing_marker' | 'bad_id'): v
   const badge = document.createElement('span');
   badge.className = 'badge neutral';
   badge.innerHTML = `${icon('shield-alert')}<span>No signature found</span>`;
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.innerHTML = `<div class="verdict neutral">${icon('shield-alert')}<span>No signature found</span></div><div class="note">${reason === 'bad_id' ? 'The id after the signature marker is not 24 Crockford base32 characters.' : 'The opening marker has no closing marker after it. A platform that truncates long posts cuts the signature first.'}</div>`;
-  shadow.append(style, badge, card);
+  badge.tabIndex = 0;
+  const cardHtml = `<div class="verdict neutral">${icon('shield-alert')}<span>No signature found</span></div><div class="note">${reason === 'bad_id' ? 'The id after the signature marker is not 24 Crockford base32 characters.' : 'The opening marker has no closing marker after it. A platform that truncates long posts cuts the signature first.'}</div>`;
+  shadow.append(style, badge);
+  cardLayer.attach(badge, () => cardHtml);
   node.parentNode?.insertBefore(host, node.nextSibling);
 }
 
@@ -263,14 +362,12 @@ function placeBadge(node: Text, mark: FoundMark, ordinal: number): Render {
   badge.setAttribute('role', 'status');
   badge.tabIndex = 0;
   badge.innerHTML = `${icon('loader-circle')}<span>Checking</span>`;
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.innerHTML = `<div class="verdict neutral">${icon('loader-circle')}<span>Checking with ZOREAL</span></div><div class="note">Fetching the public record and verifying it against the pinned roots.</div>`;
-  shadow.append(style, badge, card);
+  // The card's content lives here; the card itself is drawn by the layer at
+  // the document root, so no ancestor of this post can clip or cover it.
+  let cardContent = `<div class="verdict neutral">${icon('loader-circle')}<span>Checking with ZOREAL</span></div><div class="note">Fetching the public record and verifying it against the pinned roots.</div>`;
+  shadow.append(style, badge);
+  cardLayer.attach(badge, () => cardContent);
   after.parentNode?.insertBefore(host, after);
-  badge.addEventListener('click', () => card.classList.toggle('pinned'));
-  badge.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.classList.toggle('pinned'); } });
-  document.addEventListener('click', (e) => { if (!e.composedPath().includes(host)) card.classList.remove('pinned'); });
   const render = (r: MarkSummary | null, error?: string): void => {
     // The verdict is also written on the host as data, for assistive tools and
     // tests. A page can read it; a page could never forge the toolbar, which
@@ -280,17 +377,16 @@ function placeBadge(node: Text, mark: FoundMark, ordinal: number): Render {
     if (!r) {
       badge.className = 'badge neutral';
       badge.innerHTML = `${icon('clock')}<span>Cannot verify now</span>`;
-      card.innerHTML = `<div class="verdict neutral">${icon('clock')}<span>Cannot verify now</span></div><div class="note">${esc(error ?? 'The record could not be fetched. This is not a failed check.')}</div>`;
+      cardContent = `<div class="verdict neutral">${icon('clock')}<span>Cannot verify now</span></div><div class="note">${esc(error ?? 'The record could not be fetched. This is not a failed check.')}</div>`;
+      cardLayer.refresh(badge, cardContent);
       return;
     }
     const v = verdictView(r);
     badge.className = `badge ${v.style}`;
     badge.innerHTML = `${icon(v.icon)}<span>${esc(v.label)}</span>`;
-    card.innerHTML = cardHtml(r);
+    cardContent = cardHtml(r);
+    cardLayer.refresh(badge, cardContent);
     if (v.style === 'strong' && closingMarker) hideMarkers(closingMarker, host);
-    // Keep the card on screen when the badge sits near the right edge.
-    const rect = host.getBoundingClientRect();
-    if (rect.left + 320 > window.innerWidth) card.classList.add('right');
   };
   renders.push(render);
   return render;

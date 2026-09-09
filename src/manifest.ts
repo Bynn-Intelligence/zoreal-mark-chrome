@@ -36,7 +36,12 @@ export default defineManifest({
     },
   ],
   permissions: ['storage', 'activeTab', 'contextMenus', 'scripting'],
-  host_permissions: ['https://zoreal.com/*', 'https://api.zoreal.com/*', 'http://localhost:4820/*', 'http://localhost:3000/*'],
+  // Every page, the same grant the content script above already implies, so
+  // that after an extension reload the script can be put back into the tabs
+  // that are already open, and so the worker can see a tab's URL when a Mark
+  // sits inside a frame on any site. The record service hosts stay listed
+  // for the CSP connect-src below.
+  host_permissions: ['<all_urls>'],
   web_accessible_resources: [
     { resources: ['fonts/*', 'icons/*'], matches: ['<all_urls>'] },
   ],
