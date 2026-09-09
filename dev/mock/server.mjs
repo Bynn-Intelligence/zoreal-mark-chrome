@@ -73,6 +73,13 @@ createServer(async (req, res) => {
     return res.end(JSON.stringify(r));
   }
   if (req.method === 'GET' && (url.pathname === '/pki/dev-anchors' || url.pathname === '/dev/anchors')) return json(res, 200, anchors);
+  // The demo inside an iframe, the way a dashboard embeds an editor: the
+  // extension must find the Marks and the box in the frame, not the page.
+  if (req.method === 'GET' && url.pathname === '/demo-frame') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end('<!doctype html><title>Framed demo</title><h1>The demo, framed</h1><p>The text box and every Mark below live inside an iframe.</p><iframe id="frame" src="/demo" style="width:100%;height:80vh;border:1px solid #ccc"></iframe>');
+    return;
+  }
   if (req.method === 'GET' && (url.pathname === '/demo' || url.pathname === '/')) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(demoPage(`http://${req.headers.host}`));

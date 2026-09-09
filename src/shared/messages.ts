@@ -40,6 +40,8 @@ export type Request =
   | { type: 'tabState'; tabId?: number }
   | { type: 'openPopupForSigning' }
   | { type: 'ensureContent'; tabId: number }
+  | { type: 'editableFocused' }
+  | { type: 'signFrame'; tabId: number }
   | { type: 'createOrder'; body: Record<string, unknown> }
   | { type: 'pollOrder'; order: string }
   | { type: 'getSettings' }
@@ -59,4 +61,6 @@ export interface SignTarget {
   /** True when the box came from the community site list rather than focus. */
   listed: boolean;
   kind: 'textarea' | 'input' | 'contenteditable' | 'none';
+  /** Set by the popup: the frame that answered, so the Mark is inserted into the same one. */
+  frameId?: number;
 }

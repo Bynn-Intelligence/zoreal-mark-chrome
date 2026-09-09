@@ -82,7 +82,15 @@ async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> 
     // popup rebuilt ahead of a worker that has not been reloaded sees. Treat
     // that like an unreachable page rather than throwing.
     const ensured = (await send<{ ok: boolean } | null>({ type: 'ensureContent', tabId: tab.id }).catch(() => null))?.ok ?? false;
-    target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }).catch(() => null)) as SignTarget | null;
+    // The frame that last held the cursor answers; the top document cannot
+    // see into an embedded editor. Falls back to the top frame.
+    const frameId = (await send<{ frameId?: number } | null>({ type: 'signFrame', tabId: tab.id }).catch(() => null))?.frameId ?? 0;
+    target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }, { frameId }).catch(() => null)) as SignTarget | null;
+    if (!target && frameId !== 0) {
+      target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }, { frameId: 0 }).catch(() => null)) as SignTarget | null;
+    } else if (target) {
+      target.frameId = frameId;
+    }
     reachable = ensured || target !== null;
   }
   if (!reachable) {
@@ -235,7 +243,7 @@ async function runSignFlow(tab: chrome.tabs.Tab, target: SignTarget, text: strin
     }
     stopped = true;
     if (s.status === 'complete') {
-      const inserted = (await chrome.tabs.sendMessage(tab.id!, { type: 'insertMark', id: s.id, marker: 'signed' }).catch(() => ({ ok: false }))) as { ok: boolean };
+      const inserted = (await chrome.tabs.sendMessage(tab.id!, { type: 'insertMark', id: s.id, marker: 'signed' }, { frameId: target.frameId ?? 0 }).catch(() => ({ ok: false }))) as { ok: boolean };
       box.innerHTML = `<div class="done">${icon('badge-check')}<span>Signed. ${inserted.ok ? 'The Mark is in your text box; post it as it is.' : 'Copy the Mark below into your post.'}</span></div>
         ${inserted.ok ? '' : `<div class="preview">::ZOREAL-MARK:: ${esc(text)} ::ZOREAL-SIGNATURE:${esc(s.id)}::</div>`}
         <div class="meta">Record <a class="link" href="#" id="rec">${esc(s.id)}</a></div>`;

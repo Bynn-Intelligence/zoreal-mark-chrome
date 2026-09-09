@@ -28,7 +28,11 @@ export default defineManifest({
       matches: ['<all_urls>'],
       js: ['src/content/content.ts'],
       run_at: 'document_idle',
-      all_frames: false,
+      // Frames too: a dashboard that embeds its editor in an iframe, a chat
+      // widget, a comment box served from another origin. Each frame scans
+      // itself and answers for its own boxes; the worker remembers which frame
+      // last held the cursor so the popup asks the right one.
+      all_frames: true,
     },
   ],
   permissions: ['storage', 'activeTab', 'contextMenus', 'scripting'],

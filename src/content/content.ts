@@ -297,7 +297,27 @@ function attachSignControls(): void {
 
 function rememberEditable(e: Event): void {
   const t = e.target as HTMLElement | null;
-  if (t && editable(t)) lastEditable = t.closest('textarea, input, [contenteditable]') as HTMLElement;
+  if (!t || !editable(t)) return;
+  const box = t.closest('textarea, input, [contenteditable]') as HTMLElement;
+  if (box === lastEditable) return;
+  lastEditable = box;
+  // Tells the worker this frame holds the cursor. The popup cannot see into a
+  // frame from the top document, so the answer to "which box?" has to come
+  // from whichever frame the holder is typing in.
+  void chrome.runtime.sendMessage({ type: 'editableFocused' }).catch(() => undefined);
+}
+
+/**
+ * The page a Mark written here binds to. Inside a frame that is the page the
+ * holder is looking at, not the frame's own address: the referrer is the
+ * embedding page for a same-site frame, and the top origin is all a
+ * cross-site one is allowed to know.
+ */
+function pageUrlForSigning(): string {
+  if (window.top === window) return location.href;
+  if (document.referrer) return document.referrer;
+  const top = location.ancestorOrigins?.[location.ancestorOrigins.length - 1];
+  return top ? `${top}/` : location.href;
 }
 document.addEventListener('focusin', rememberEditable);
 // The context menu path: the box that was right-clicked is the box to sign,
@@ -320,11 +340,11 @@ function textOf(el: HTMLElement): string {
 
 function signTarget(): SignTarget {
   const el = targetBox();
-  if (!el) return { found: false, text: '', pageUrl: location.href, listed: false, kind: 'none' };
+  if (!el) return { found: false, text: '', pageUrl: pageUrlForSigning(), listed: false, kind: 'none' };
   const entry = siteEntry();
   const listed = !!entry && entry.selectors.some((s) => { try { return el.matches(s); } catch { return false; } });
   const kind = el instanceof HTMLTextAreaElement ? 'textarea' : el instanceof HTMLInputElement ? 'input' : 'contenteditable';
-  return { found: true, text: textOf(el), pageUrl: location.href, listed, kind };
+  return { found: true, text: textOf(el), pageUrl: pageUrlForSigning(), listed, kind };
 }
 
 function insertMark(id: string, marker: 'signed' | 'delegated'): boolean {

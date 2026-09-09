@@ -32,18 +32,24 @@ async function ensureContent(tabId: number): Promise<boolean> {
   const alive = await chrome.tabs.sendMessage(tabId, { type: 'ping' }).then(() => true).catch(() => false);
   if (alive) return true;
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_FILES });
+    await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: CONTENT_FILES });
     return await chrome.tabs.sendMessage(tabId, { type: 'ping' }).then(() => true).catch(() => false);
   } catch {
     return false; // chrome://, the Web Store, and other pages no extension may touch
   }
 }
 
-chrome.contextMenus.onClicked.addListener((info) => {
-  if (info.menuItemId === 'zoreal-sign') void openPopup();
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== 'zoreal-sign') return;
+  // The menu knows which frame was right-clicked; the popup asks that one.
+  if (tab?.id !== undefined) focusedFrames.set(tab.id, info.frameId ?? 0);
+  void openPopup();
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => tabs.delete(tabId));
+/** The frame that last held the cursor in an editable box, per tab. */
+const focusedFrames = new Map<number, number>();
+
+chrome.tabs.onRemoved.addListener((tabId) => { tabs.delete(tabId); focusedFrames.delete(tabId); });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status === 'loading') {
     tabs.delete(tabId);
@@ -90,6 +96,11 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
       return { opened: await openPopup() };
     case 'ensureContent':
       return { ok: await ensureContent(msg.tabId) };
+    case 'editableFocused':
+      if (sender.tab?.id !== undefined) focusedFrames.set(sender.tab.id, sender.frameId ?? 0);
+      return { ok: true };
+    case 'signFrame':
+      return { frameId: focusedFrames.get(msg.tabId) ?? 0 };
     case 'createOrder': {
       const s = await loadSettings();
       return new RecordService(s.baseUrl, s.apiPrefix).createOrder(msg.body);
