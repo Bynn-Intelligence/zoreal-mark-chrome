@@ -24,7 +24,7 @@
     "pack": "node scripts/pack.mjs"
   },
   "dependencies": {
-    "@zoreal/mark-verify": "github:Bynn-Intelligence/zoreal-mark-verify#de80bee41223343013f2fd8807ecfd8aecde2ec0",
+    "@zoreal/mark-verify": "github:Bynn-Intelligence/zoreal-mark-verify#42aa68404ca630ed4397f50ac008d7b1c4a60f35",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
