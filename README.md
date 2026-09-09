@@ -188,7 +188,8 @@ Requires Node 22 or later.
 ```sh
 npm install
 npm run dev        # Vite with CRXJS, hot reload of the unpacked extension in dist/
-npm run build      # Production build into dist/
+npm run build      # Production build into dist/: talks to the record service only
+npm run build:local # The same, allowed to reach a record service on localhost too
 npm run test       # vitest
 npm run typecheck  # tsc --noEmit
 npm run pack       # release/zoreal-mark-chrome-<version>.zip from the built manifest
@@ -196,7 +197,8 @@ npm run mock       # Local record server serving the conformance fixtures on por
 ```
 
 Load `dist/` as an unpacked extension at `chrome://extensions` with Developer mode on, and
-reload it there after every build. Point the options page at `http://localhost:4820` to
+reload it there after every build. Use `npm run build:local` or `npm run dev` for a build
+that may reach localhost; a release build refuses to. Point the options page at `http://localhost:4820` to
 verify against the mock, and open `http://localhost:4820/demo` for a page carrying one
 Mark per conformance case, plus one signed for that very page so a strong verdict can be
 seen. `/demo-frame` is the same page inside an iframe.

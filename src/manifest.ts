@@ -8,7 +8,7 @@ import { defineManifest } from '@crxjs/vite-plugin';
  * Mark on any page" costs; the script reads text nodes and draws badges and
  * sends nothing about the page anywhere.
  */
-export default defineManifest({
+export default defineManifest((env) => ({
   manifest_version: 3,
   name: 'ZOREAL Mark',
   short_name: 'ZOREAL Mark',
@@ -46,6 +46,9 @@ export default defineManifest({
     { resources: ['fonts/*', 'icons/*'], matches: ['<all_urls>'] },
   ],
   content_security_policy: {
-    extension_pages: "script-src 'self'; object-src 'self'; connect-src https://zoreal.com https://api.zoreal.com http://localhost:4820 http://localhost:3000; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'",
+    // A release talks to the record service and nothing else. A development
+    // build (`npm run build:local`, `npm run dev`) may also reach a record
+    // service on this machine: the mock on 4820 and a local API on 3000.
+    extension_pages: `script-src 'self'; object-src 'self'; connect-src https://zoreal.com https://api.zoreal.com${env.mode === 'production' ? '' : ' http://localhost:4820 http://localhost:3000'}; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'`,
   },
-});
+}));
