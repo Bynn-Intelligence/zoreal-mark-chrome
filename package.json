@@ -2,7 +2,7 @@
   "name": "zoreal-mark-chrome",
   "version": "0.1.6",
   "private": true,
-  "description": "ZOREAL Mark for Chrome: verify that a live, chip-verified human vouched for what you are reading, and sign what you post.",
+  "description": "ZOREAL Mark for Chrome: verify that a real human, verified by ZOREAL, vouched for what you are reading, and sign what you post.",
   "license": "MIT",
   "repository": {
     "type": "git",
