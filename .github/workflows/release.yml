@@ -1,0 +1,57 @@
+# A tag v<version> publishes that version to the Chrome Web Store and attaches
+# the package to a GitHub release. The tag must match the manifest version.
+#
+# Secrets (repository settings):
+#   CWS_EXTENSION_ID   the item id the store assigned at the first, manual upload
+#   CWS_CLIENT_ID      an OAuth client (Desktop) in a Google Cloud project with the
+#   CWS_CLIENT_SECRET  Chrome Web Store API enabled, owned by the publisher account
+#   CWS_REFRESH_TOKEN  a refresh token for that client, obtained once by hand
+#
+# The store reviews every uploaded version before it goes live; a version whose
+# permissions did not change is usually through within a day. Users receive it
+# on their browser's next update check, without doing anything.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: The tag names the manifest version
+        run: |
+          v=$(node -p "require('./dist/manifest.json').version")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} but manifest version $v"; exit 1; }
+      - run: npm run pack
+      - name: Upload to the Chrome Web Store and publish
+        env:
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: |
+          npx --yes chrome-webstore-upload-cli@3 upload \
+            --source release/*.zip \
+            --extension-id "$CWS_EXTENSION_ID" \
+            --client-id "$CWS_CLIENT_ID" \
+            --client-secret "$CWS_CLIENT_SECRET" \
+            --refresh-token "$CWS_REFRESH_TOKEN" \
+            --auto-publish
+      - name: GitHub release with the package
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.zip
+          generate_release_notes: true

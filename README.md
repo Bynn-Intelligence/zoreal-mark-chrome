@@ -104,6 +104,19 @@ is maintained by everyone: add or fix an entry with a pull request. The list pla
 control and nothing else; it never affects what is signed or how a Mark is verified, and a
 site that is not listed still signs from the toolbar.
 
+## Install
+
+The Chrome Web Store listing is the way in for everyone, on Chrome, Edge, Brave, Vivaldi,
+Arc and Opera; the link is added here the day the listing is live. Until then, and for
+anyone who wants to run the code they can read:
+
+1. Download the package from the latest GitHub release, or build it (`npm run build`).
+2. Unzip it, open `chrome://extensions`, turn on Developer mode, choose "Load unpacked",
+   and pick the unzipped folder (or `dist/` after a build).
+
+An unpacked install does not update itself; the store one does, silently, on the
+browser's next update check after a new version passes review.
+
 ## Development
 
 Requires Node 22 or later.

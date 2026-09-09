@@ -20,7 +20,7 @@
     "test": "vitest run",
     "mock": "node dev/mock/server.mjs",
     "icons": "node scripts/make-icons.mjs && node scripts/make-lucide.mjs",
-    "zip": "cd dist && zip -r ../zoreal-mark-chrome.zip . -x '.*'"
+    "pack": "node scripts/pack.mjs"
   },
   "dependencies": {
     "@zoreal/mark-verify": "^0.1.0",
