@@ -117,6 +117,49 @@ async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> 
   });
 }
 
+/**
+ * The QR with the ZOREAL square in the middle, in black on a white knockout.
+ *
+ * Error correction Q lets a quarter of the code be lost; the knockout takes
+ * under seven percent of the area. Drawn at the device pixel ratio so the
+ * modules stay crisp on a retina panel, which is what the phone's camera
+ * actually sees. The logo is the extension's own SVG, recoloured to black
+ * once and kept.
+ */
+const KNOCKOUT = 0.26;
+let logoPromise: Promise<HTMLImageElement> | null = null;
+function logo(): Promise<HTMLImageElement> {
+  return (logoPromise ??= (async () => {
+    const svg = await (await fetch(chrome.runtime.getURL('icons/zoreal-square.svg'))).text();
+    const black = svg.replace(/#00b4d9/gi, '#000000');
+    const img = new Image();
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(black)}`;
+    await img.decode();
+    return img;
+  })());
+}
+
+async function drawQr(canvas: HTMLCanvasElement, text: string, cssSize: number): Promise<void> {
+  const scale = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  await QRCode.toCanvas(canvas, text, { errorCorrectionLevel: 'Q', margin: 1, width: cssSize * scale });
+  canvas.style.width = `${cssSize}px`;
+  canvas.style.height = `${cssSize}px`;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const size = canvas.width;
+  const box = Math.round(size * KNOCKOUT);
+  const at = Math.round((size - box) / 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(at, at, box, box);
+  try {
+    const img = await logo();
+    const inset = Math.round(box * 0.12);
+    ctx.drawImage(img, at + inset, at + inset, box - inset * 2, box - inset * 2);
+  } catch {
+    // No logo is a cosmetic loss; the code is already drawn and scannable.
+  }
+}
+
 async function runSignFlow(tab: chrome.tabs.Tab, target: SignTarget, text: string, identity: 'persona' | 'legal_name'): Promise<void> {
   const box = document.getElementById('sign')!;
   const url = normaliseUrl(target.pageUrl);
@@ -155,7 +198,7 @@ async function runSignFlow(tab: chrome.tabs.Tab, target: SignTarget, text: strin
     full.append(c);
     full.addEventListener('click', () => full.remove());
     document.body.append(full);
-    const tick = async (): Promise<void> => { if (!full.isConnected || stopped) return; await QRCode.toCanvas(c, await qrFrame(order.qr_token, order.qr_secret, createdAt, key), { errorCorrectionLevel: 'L', margin: 1, width: 320 }); setTimeout(() => void tick(), 1000); };
+    const tick = async (): Promise<void> => { if (!full.isConnected || stopped) return; await drawQr(c, await qrFrame(order.qr_token, order.qr_secret, createdAt, key), 320); setTimeout(() => void tick(), 1000); };
     void tick();
   });
   // Frames are generated live, one per second, never in advance.
@@ -166,7 +209,7 @@ async function runSignFlow(tab: chrome.tabs.Tab, target: SignTarget, text: strin
     countdown.textContent = left > 0 ? `${left} s left to scan` : 'The code has expired';
     if (left === 0) { stopped = true; status.innerHTML = `${icon('clock')}<span>The order expired before it was scanned.</span>`; return; }
     try {
-      await QRCode.toCanvas(canvas, await qrFrame(order.qr_token, order.qr_secret, createdAt, key), { errorCorrectionLevel: 'L', margin: 1, width: 200 });
+      await drawQr(canvas, await qrFrame(order.qr_token, order.qr_secret, createdAt, key), 200);
     } catch (e) {
       status.innerHTML = `<span class="err">${esc(e instanceof Error ? e.message : String(e))}</span>`;
     }
