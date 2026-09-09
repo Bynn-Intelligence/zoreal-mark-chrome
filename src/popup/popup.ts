@@ -56,8 +56,12 @@ async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> 
   let target: SignTarget | null = null;
   let reachable = false;
   if (tab?.id !== undefined) {
-    reachable = (await send<{ ok: boolean }>({ type: 'ensureContent', tabId: tab.id }).catch(() => ({ ok: false }))).ok;
-    if (reachable) target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }).catch(() => null)) as SignTarget | null;
+    // The worker answers null for a message it does not know, which is what a
+    // popup rebuilt ahead of a worker that has not been reloaded sees. Treat
+    // that like an unreachable page rather than throwing.
+    const ensured = (await send<{ ok: boolean } | null>({ type: 'ensureContent', tabId: tab.id }).catch(() => null))?.ok ?? false;
+    target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }).catch(() => null)) as SignTarget | null;
+    reachable = ensured || target !== null;
   }
   if (!reachable) {
     box.innerHTML = `<div class="empty"><b>This page cannot be signed from.</b> Chrome keeps extensions out of its own pages and the Web Store; on any other page, reload it once and open this again.</div>`;
