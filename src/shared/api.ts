@@ -7,6 +7,30 @@ import type { OrderCreated, OrderStatus } from './messages.js';
  * immutable once their timestamp is confirmed. Nothing here sends anything
  * about the page or the reader.
  */
+const inflight = new Map<string, Promise<FetchResult>>();
+const missing = new Map<string, number>();
+const MISSING_TTL_MS = 60_000;
+
+/**
+ * A ceiling on record fetches per minute from this extension, whatever the
+ * pages are doing. It is a fuse, not a limit a reader meets: a feed of a few
+ * hundred Marks is one fetch each, once, then the cache. Past the ceiling a
+ * Mark reads "cannot verify now" rather than the record service reading a
+ * flood from one browser.
+ */
+const budget = {
+  windowStart: 0,
+  used: 0,
+  limit: 300,
+  take(): boolean {
+    const now = Date.now();
+    if (now - this.windowStart > 60_000) { this.windowStart = now; this.used = 0; }
+    if (this.used >= this.limit) return false;
+    this.used += 1;
+    return true;
+  },
+};
+
 export class RecordService {
   constructor(private readonly baseUrl: string, private readonly apiPrefix = '/v1') {}
 
@@ -21,13 +45,31 @@ export class RecordService {
   async fetchRecord(id: string): Promise<FetchResult> {
     const cached = await readCache(id);
     if (cached) return { status: 'ok', record: cached };
+    // One request per id at a time, whatever asks: a page carrying the same
+    // Mark many times, or a scanner feeding itself, collapses to one fetch.
+    const running = inflight.get(id);
+    if (running) return running;
+    const missingUntil = missing.get(id);
+    if (missingUntil !== undefined && missingUntil > Date.now()) return { status: 'not_found' };
+    if (!budget.take()) return { status: 'unavailable', reason: 'the extension paused record fetches for a minute: too many in a row' };
+    const p = this.fetchRecordNow(id).finally(() => inflight.delete(id));
+    inflight.set(id, p);
+    return p;
+  }
+
+  private async fetchRecordNow(id: string): Promise<FetchResult> {
     let res: Response;
     try {
       res = await fetch(this.recordUrl(id), { headers: { Accept: 'application/json' }, credentials: 'omit', cache: 'no-store' });
     } catch (e) {
       return { status: 'unavailable', reason: e instanceof Error ? e.message : 'network error' };
     }
-    if (res.status === 404) return { status: 'not_found' };
+    if (res.status === 404) {
+      // A missing record stays missing for a while; asking again in a second
+      // would only repeat the answer.
+      missing.set(id, Date.now() + MISSING_TTL_MS);
+      return { status: 'not_found' };
+    }
     if (!res.ok) return { status: 'unavailable', reason: `HTTP ${res.status}` };
     let record: unknown;
     try {
