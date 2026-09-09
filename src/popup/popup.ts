@@ -90,6 +90,8 @@ async function renderSignStart(tab: chrome.tabs.Tab | undefined): Promise<void> 
       target = (await chrome.tabs.sendMessage(tab.id, { type: 'getSignTarget' }, { frameId: 0 }).catch(() => null)) as SignTarget | null;
     } else if (target) {
       target.frameId = frameId;
+      // The frame reported the best URL it could see; the tab knows the real one.
+      if (frameId !== 0 && tab.url) target.pageUrl = tab.url;
     }
     reachable = ensured || target !== null;
   }

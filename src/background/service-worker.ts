@@ -66,12 +66,16 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
   switch (msg.type) {
     case 'verify': {
       const tabId = sender.tab?.id;
+      // A Mark inside a frame is judged against the page the reader is on,
+      // which only the extension knows: a cross-origin frame sees at most the
+      // top page's origin. The same rule binds a Mark signed in a frame.
+      const pageUrl = pageUrlFor(sender, msg.pageUrl);
       const results: MarkSummary[] = [];
-      for (const m of msg.marks) results.push(await verifyOne(m, msg.pageUrl));
+      for (const m of msg.marks) results.push(await verifyOne(m, pageUrl));
       if (tabId !== undefined) {
         const prev = tabs.get(tabId);
         const merged = mergeMarks(prev?.marks ?? [], results);
-        const state: TabState = { url: msg.pageUrl, marks: merged, page: prev?.page, updatedAt: Date.now() };
+        const state: TabState = { url: pageUrl, marks: merged, page: prev?.page, updatedAt: Date.now() };
         tabs.set(tabId, state);
         await updateBadge(tabId, state);
       }
@@ -119,6 +123,11 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
       await clearRecordCache();
       return { ok: true };
   }
+}
+
+/** The top page's URL for a message from a frame, the frame's own for the top document. */
+function pageUrlFor(sender: chrome.runtime.MessageSender, reported: string): string {
+  return (sender.frameId ?? 0) !== 0 && sender.tab?.url ? sender.tab.url : reported;
 }
 
 async function verifyOne(m: { marker: 'signed' | 'delegated'; text: string; id: string }, pageUrl: string): Promise<MarkSummary> {
