@@ -350,7 +350,9 @@ function signTarget(): SignTarget {
 function insertMark(id: string, marker: 'signed' | 'delegated'): boolean {
   const el = targetBox();
   if (!el) return false;
-  const wrapped = wrap(textOf(el).trim(), id, marker);
+  // Block form, markers on their own lines, wherever the box can hold a line
+  // break; a single-line input gets the inline form.
+  const wrapped = wrap(textOf(el).trim(), id, marker, el instanceof HTMLInputElement ? 'inline' : 'block');
   el.focus();
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
     const setter = Object.getOwnPropertyDescriptor(el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value')?.set;
