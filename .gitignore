@@ -12,5 +12,6 @@ dist/
 CLAUDE.local.md
 .claude/skills/
 dev/screens/
-\nrelease/\nCLAUDE.md
+
+release/
 CLAUDE.md
