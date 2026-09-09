@@ -14,6 +14,36 @@ import sites from '../../sites.json' with { type: 'json' };
  */
 
 const CLOSE = '::ZOREAL-SIGNATURE:';
+
+/**
+ * True once the extension that injected this script has been reloaded or
+ * removed. The page keeps running the old script, whose runtime is gone;
+ * every call into it throws "Extension context invalidated". A retired
+ * script stops scanning and answers nothing, and the fresh script the reload
+ * injected takes over.
+ */
+let retired = false;
+
+/** A message to the worker that cannot throw when the extension is gone. */
+function send<T = unknown>(msg: unknown): Promise<T | null> {
+  if (retired || !chrome.runtime?.id) { retire(); return Promise.resolve(null); }
+  try {
+    return (chrome.runtime.sendMessage(msg) as Promise<T>).catch((e: unknown) => { if (isInvalidated(e)) retire(); return null; });
+  } catch (e) {
+    if (isInvalidated(e)) retire();
+    return Promise.resolve(null);
+  }
+}
+
+function isInvalidated(e: unknown): boolean {
+  return String((e as { message?: unknown })?.message ?? e).includes('context invalidated');
+}
+
+function retire(): void {
+  if (retired) return;
+  retired = true;
+  try { observer.disconnect(); } catch { /* not created yet */ }
+}
 const processed = new WeakSet<Node>();
 type Render = (m: MarkSummary | null, error?: string) => void;
 const renders: Render[] = [];
@@ -110,8 +140,8 @@ function scan(root: Node = document.body): void {
   // (a quote, an altered copy), and each occurrence gets its own verdict.
   const ordinals = found.map(() => nextOrdinal++);
   const slots = found.map((f, i) => placeBadge(f.node, f.mark, ordinals[i]!));
-  void chrome.runtime.sendMessage({ type: 'verify', pageUrl: location.href, marks: found.map((f, i) => ({ marker: f.mark.marker, text: f.mark.text, id: f.mark.id, ordinal: ordinals[i]! })) })
-    .then((res: { results?: MarkSummary[]; error?: string } | undefined) => {
+  void send<{ results?: MarkSummary[]; error?: string }>({ type: 'verify', pageUrl: location.href, marks: found.map((f, i) => ({ marker: f.mark.marker, text: f.mark.text, id: f.mark.id, ordinal: ordinals[i]! })) })
+    .then((res) => {
       if (!res || !res.results) { for (const r of slots) r(null, res?.error); return; }
       res.results.forEach((r, i) => slots[i]?.(r));
     })
@@ -297,7 +327,7 @@ function scanPageMark(): void {
   if (!el) return;
   const canonical = (document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null)?.href || location.href;
   pageMarkElement = el as HTMLElement;
-  void chrome.runtime.sendMessage({ type: 'verifyPage', pageUrl: canonical, id: meta.content.trim(), text: (el as HTMLElement).innerText });
+  void send({ type: 'verifyPage', pageUrl: canonical, id: meta.content.trim(), text: (el as HTMLElement).innerText });
 }
 
 // ---------- the sign control ----------
@@ -328,7 +358,7 @@ function ensureControl(): NonNullable<typeof control> {
   hint.hidden = true;
   button.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in the box
   button.addEventListener('click', async () => {
-    const res = (await chrome.runtime.sendMessage({ type: 'openPopupForSigning' }).catch(() => null)) as { opened?: boolean } | null;
+    const res = await send<{ opened?: boolean }>({ type: 'openPopupForSigning' });
     if (!res?.opened) {
       hint.textContent = 'Open the ZOREAL Mark icon in the toolbar to sign this text.';
       hint.hidden = false;
@@ -375,7 +405,7 @@ function rememberEditable(e: Event): void {
   // Tells the worker this frame holds the cursor. The popup cannot see into a
   // frame from the top document, so the answer to "which box?" has to come
   // from whichever frame the holder is typing in.
-  void chrome.runtime.sendMessage({ type: 'editableFocused' }).catch(() => undefined);
+  void send({ type: 'editableFocused' });
 }
 
 /**
@@ -489,7 +519,7 @@ chrome.runtime.onMessage.addListener((msg: ContentRequest, _sender, sendResponse
 // ---------- lifecycle ----------
 let pending: number | undefined;
 const observer = new MutationObserver((records) => {
-  if (pending !== undefined) return;
+  if (pending !== undefined || retired) return;
   pending = window.setTimeout(() => {
     pending = undefined;
     for (const r of records) for (const n of r.addedNodes) if (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.TEXT_NODE) scan(n.nodeType === Node.TEXT_NODE ? (n.parentElement ?? document.body) : n);
