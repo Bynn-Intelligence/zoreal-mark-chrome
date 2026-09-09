@@ -39,9 +39,11 @@ try {
   await options.goto(`chrome-extension://${extId}/src/options/index.html`);
   await options.waitForSelector('#baseUrl');
   await options.$eval('#baseUrl', (el, v) => { el.value = v; }, MOCK);
-  await options.click('#save');
+  // An in-page click: this Chrome for Testing build dies on a CDP mouse click
+  // into an extension page (seen 2026-09-09; the browser exits, not the page).
+  await options.evaluate(() => document.getElementById('save').click());
   await options.waitForFunction(() => document.getElementById('status')?.textContent === 'Saved');
-  await options.screenshot({ path: 'dev/screens/options.png' });
+  if (process.env.E2E_SCREENSHOTS !== '0') await options.screenshot({ path: 'dev/screens/options.png' });
 
   const page = await browser.newPage();
   await page.goto(`${MOCK}/demo`, { waitUntil: 'networkidle0' });
@@ -91,25 +93,26 @@ try {
   });
   console.log('verified block:', JSON.stringify(hidden));
   await page.evaluate(() => document.getElementById('here')?.scrollIntoView({ block: 'center' }));
-  await (await page.$('#here'))?.screenshot({ path: 'dev/screens/verified-block.png' });
+  if (process.env.E2E_SCREENSHOTS !== '0') await (await page.$('#here'))?.screenshot({ path: 'dev/screens/verified-block.png' });
   if (!hidden || hidden.verdict !== 'verified_here' || hidden.markers !== 2 || hidden.markersVisible !== 0 || hidden.visibleText.includes('::ZOREAL')) { console.log('  WRONG: markers of a verified Mark still visible'); failures++; }
 
   // Hover the first badge for the card, and focus the demo box for the sign control.
-  await page.hover('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])');
+  // In-page events rather than CDP input: this Chrome for Testing build exits
+  // on a CDP mouse click or screenshot into an extension page (2026-09-09).
+  await page.evaluate(() => document.querySelector('[data-zoreal-mark-host]:not([data-zoreal-mark-host="sign"]):not([data-zoreal-mark-host="card"])')?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false })));
   await new Promise((r) => setTimeout(r, 400));
-  await page.screenshot({ path: 'dev/screens/demo-hover.png' });
-  await page.click('#demo-box');
-  await page.type('#demo-box', 'I was at the launch and the demo was real.');
+  if (process.env.E2E_SCREENSHOTS !== '0') await page.screenshot({ path: 'dev/screens/demo-hover.png' });
+  await page.evaluate(() => { const b = document.querySelector('#demo-box'); b.focus(); b.value = 'I was at the launch and the demo was real.'; b.dispatchEvent(new Event('input', { bubbles: true })); });
   await new Promise((r) => setTimeout(r, 300));
   const controlShown = await page.$eval('[data-zoreal-mark-host="sign"]', (el) => el.style.display !== 'none');
   console.log(`sign control shown beside the listed box: ${controlShown}`);
-  await page.screenshot({ path: 'dev/screens/demo-sign-control.png' });
+  if (process.env.E2E_SCREENSHOTS !== '0') await page.screenshot({ path: 'dev/screens/demo-sign-control.png' });
 
   // The popup, opened as a page: the sign flow reads the demo tab's box through the content script.
   const popup = await browser.newPage();
   await popup.goto(`chrome-extension://${extId}/src/popup/index.html`);
   await new Promise((r) => setTimeout(r, 800));
-  await popup.screenshot({ path: 'dev/screens/popup.png' });
+  if (process.env.E2E_SCREENSHOTS !== '0') await popup.screenshot({ path: 'dev/screens/popup.png' });
   process.exitCode = failures === 0 && controlShown ? 0 : 1;
 } finally {
   await browser.close();

@@ -49,22 +49,113 @@ chrome.runtime.onInstalled.addListener(() => {
 
 const CONTENT_FILES = chrome.runtime.getManifest().content_scripts?.[0]?.js ?? [];
 
+/**
+ * Puts a live script into frames that have none. A copy of this build that
+ * went quiet in a frame is restarted through the entry point it left on the
+ * isolated world's global; a frame with no copy at all (a frame created
+ * before the extension could reach it, or an isolated world made fresh by an
+ * extension reload) gets the loader, which runs the module for the first
+ * time. The loader cannot restart an existing copy: the module cache hands
+ * back the same instance and nothing runs.
+ */
+async function inject(tabId: number, frameIds: number[]): Promise<void> {
+  const restarted = await chrome.scripting.executeScript({
+    target: { tabId, frameIds },
+    func: () => {
+      const g = globalThis as unknown as { __zorealMarkStart?: () => void };
+      if (typeof g.__zorealMarkStart !== 'function') return false;
+      g.__zorealMarkStart();
+      return true;
+    },
+  });
+  const fresh = restarted.filter((r) => r.result !== true).map((r) => r.frameId);
+  if (fresh.length > 0) await chrome.scripting.executeScript({ target: { tabId, frameIds: fresh }, files: CONTENT_FILES });
+}
+
 async function injectIntoOpenTabs(): Promise<void> {
   const open = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
   await Promise.all(open.map((t) => (t.id === undefined ? Promise.resolve() : ensureContent(t.id))));
 }
 
-/** True when the page answers; injects first when it does not (once, idempotent). */
+/**
+ * Every frame of the tab is probed for a live content script (the attribute
+ * the script sets on its document root and clears when it retires), and the
+ * script is put back into every frame where it is missing. Pinging the top
+ * frame alone missed the case that mattered: a dashboard whose posts live in
+ * an iframe, where the top document answered and the frame had nothing.
+ *
+ * @return whether the tab now has a live script in at least one frame
+ */
 async function ensureContent(tabId: number): Promise<boolean> {
-  const alive = await chrome.tabs.sendMessage(tabId, { type: 'ping' }).then(() => true).catch(() => false);
-  if (alive) return true;
+  // Only web pages. Probing the extension's own pages, or chrome://, with
+  // executeScript is refused at best; on the options page it took the page
+  // down with it.
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab?.url || !/^https?:/.test(tab.url)) return false;
+  let probe: chrome.scripting.InjectionResult<{ url: string; alive: boolean }>[];
   try {
-    await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files: CONTENT_FILES });
-    return await chrome.tabs.sendMessage(tabId, { type: 'ping' }).then(() => true).catch(() => false);
-  } catch {
-    return false; // chrome://, the Web Store, and other pages no extension may touch
+    probe = await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      func: () => ({ url: location.href, alive: (globalThis as unknown as { __zorealMarkAlive?: boolean }).__zorealMarkAlive === true }),
+    });
+  } catch (e) {
+    log('tab', tabId, 'cannot be probed:', e instanceof Error ? e.message : String(e)); // chrome://, the Web Store, and other pages no extension may touch
+    return false;
   }
+  const dead = probe.filter((r) => r.result && !r.result.alive).map((r) => r.frameId);
+  if (dead.length > 0) {
+    log('tab', tabId, 'injecting into', dead.length, 'frame(s) with no live script:', probe.filter((r) => dead.includes(r.frameId)).map((r) => r.result?.url));
+    try {
+      await inject(tabId, dead);
+    } catch (e) {
+      log('tab', tabId, 'injection failed:', e instanceof Error ? e.message : String(e));
+    }
+  }
+  return probe.some((r) => r.result?.alive) || dead.length > 0;
 }
+
+// A tab the reader switches to is checked, so a frame whose script died
+// gets one back before anyone has to reload anything; and the active tab is
+// checked once a minute regardless, the backstop for whatever else can kill
+// a script in a frame.
+chrome.tabs.onActivated.addListener(({ tabId }) => { void ensureContent(tabId); });
+chrome.alarms.create('zoreal-mark-heal', { periodInMinutes: 1 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== 'zoreal-mark-heal') return;
+  void activeTabId().then((tabId) => { if (tabId !== undefined) void ensureContent(tabId); });
+});
+
+/** For the worker console: `zorealHeal()` checks the active tab (or `zorealHeal(tabId)`) and reinjects where a frame has no live script. */
+(globalThis as unknown as { zorealHeal: (tabId?: number) => Promise<boolean> }).zorealHeal = async (tabId?: number) => {
+  const id = tabId ?? (await activeTabId());
+  if (id === undefined) { console.log('no active tab'); return false; }
+  const ok = await ensureContent(id);
+  console.log('tab', id, ok ? 'has a live script' : 'could not be reached');
+  return ok;
+};
+
+/**
+ * For the worker console: `zorealDiagnose()` lists every tab and frame with
+ * whether a content script is alive in it and what the tab's stored state
+ * holds. Read-only; it injects nothing.
+ */
+(globalThis as unknown as { zorealDiagnose: () => Promise<void> }).zorealDiagnose = async () => {
+  const open = await chrome.tabs.query({});
+  const rows: Record<string, unknown>[] = [];
+  for (const t of open) {
+    if (t.id === undefined) continue;
+    let frames: { frameId: number; url?: string; alive?: boolean }[] = [];
+    try {
+      const probe = await chrome.scripting.executeScript({ target: { tabId: t.id, allFrames: true }, func: () => ({ url: location.href, alive: (globalThis as unknown as { __zorealMarkAlive?: boolean }).__zorealMarkAlive === true }) });
+      frames = probe.map((r) => ({ frameId: r.frameId, url: r.result?.url, alive: r.result?.alive }));
+    } catch (e) {
+      frames = [{ frameId: -1, url: `(not probeable: ${e instanceof Error ? e.message : String(e)})` }];
+    }
+    const state = await getTab(t.id);
+    for (const f of frames) rows.push({ tab: t.id, frame: f.frameId, alive: f.alive, url: (f.url ?? t.url ?? '').slice(0, 90), marksInState: f.frameId === 0 ? state?.marks.length ?? 0 : '' });
+  }
+  console.table(rows);
+};
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== 'zoreal-sign') return;

@@ -42,6 +42,8 @@ function isInvalidated(e: unknown): boolean {
 function retire(): void {
   if (retired) return;
   retired = true;
+  document.documentElement.removeAttribute('data-zoreal-mark-script');
+  (globalThis as unknown as { __zorealMarkAlive?: boolean }).__zorealMarkAlive = false;
   log('retired: the extension was reloaded or removed; this copy of the script stops here');
   try { observer.disconnect(); } catch { /* not created yet */ }
 }
@@ -95,6 +97,9 @@ function editable(el: Element | null): boolean {
   return !!el && (el.closest('textarea, input, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]') !== null);
 }
 
+/** Badges from an earlier copy of this script that this copy found and left in place. */
+let adopted = 0;
+
 /** Text nodes carrying the closing marker, outside our own hosts and outside editors. */
 function candidateNodes(root: Node): Text[] {
   const out: Text[] = [];
@@ -104,6 +109,11 @@ function candidateNodes(root: Node): Text[] {
       if (!p || processed.has(n)) return NodeFilter.FILTER_REJECT;
       if (p.closest('script, style, noscript, textarea, [data-zoreal-mark-host], [data-zoreal-marker]')) return NodeFilter.FILTER_REJECT;
       if (editable(p)) return NodeFilter.FILTER_REJECT;
+      // A closing marker that already wears a badge belongs to an earlier
+      // copy of this script (the extension was reloaded, or the worker put
+      // the script back). Its badge stays; this copy leaves it alone.
+      const next = n.nextSibling;
+      if (next instanceof Element && next.hasAttribute('data-zoreal-mark-host')) { adopted++; processed.add(n); return NodeFilter.FILTER_REJECT; }
       return n.nodeValue && n.nodeValue.includes(CLOSE) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
     },
   });
@@ -141,7 +151,8 @@ function scan(root: Node = document.body): void {
       found.push({ mark: marks[i]!, node: closer });
     }
   }
-  log('scan', root === document.body ? 'document' : (root as Element).tagName ?? root.nodeName, 'found', found.length, 'mark(s)');
+  log('scan', root === document.body ? 'document' : (root as Element).tagName ?? root.nodeName, 'found', found.length, 'mark(s)', adopted ? `(${adopted} already badged by an earlier copy, left alone)` : '');
+  adopted = 0;
   if (found.length === 0) return;
   // One badge per occurrence, and results come back in the order sent: the
   // same id can appear several times on a page with different text around it
@@ -588,7 +599,8 @@ function insertMark(id: string, marker: 'signed' | 'delegated'): boolean {
  * inside an embedded editor comes into view on the page the reader sees.
  */
 function revealMark(ordinal: number): boolean {
-  const host = ordinal < 0 ? pageMarkElement : hostsByOrdinal.get(ordinal);
+  // By attribute when this copy did not place the badge itself.
+  const host = ordinal < 0 ? pageMarkElement : (hostsByOrdinal.get(ordinal) ?? (document.querySelector(`[data-zoreal-ordinal="${ordinal}"]`) as HTMLElement | null));
   if (!host || !host.isConnected) return false;
   const block = ordinal < 0 ? host : blockOf(host);
   // Instant, not smooth: a smooth scroll is a frame-driven animation, and the
@@ -672,11 +684,29 @@ const observer = new MutationObserver((records) => {
   }, 400);
 });
 
-log('content script running in', window.top === window ? 'the top document' : 'a frame', location.href);
-scan();
-scanPageMark();
-attachSignControls();
-observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+/**
+ * Starts, or restarts, this copy of the script in this document. The worker
+ * calls the restart through `__zorealMarkStart` when its probe finds no live
+ * script in a frame; a restart keeps the badges already placed (the scan
+ * adopts them) and picks up everything since.
+ */
+function start(): void {
+  retired = false;
+  // The two marks the worker probes for: present while this script is alive
+  // in this document, cleared when it retires. The attribute is for a human
+  // looking at the DOM; the global, in this isolated world, is what the probe
+  // reads, since a page can strip an attribute off its own root and cannot
+  // reach this global.
+  document.documentElement.setAttribute('data-zoreal-mark-script', new Date().toISOString());
+  (globalThis as unknown as { __zorealMarkAlive?: boolean }).__zorealMarkAlive = true;
+  log('content script running in', window.top === window ? 'the top document' : 'a frame', location.href);
+  scan();
+  scanPageMark();
+  attachSignControls();
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+}
+(globalThis as unknown as { __zorealMarkStart?: () => void }).__zorealMarkStart = start;
+start();
 // A page restored from the back/forward cache comes back with this script
 // intact; nothing changed while it was away, and a scan costs nothing.
 window.addEventListener('pageshow', (e) => { if (e.persisted && !retired) { log('restored from the back/forward cache; rescanning'); scan(); } });
