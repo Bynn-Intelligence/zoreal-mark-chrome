@@ -21,7 +21,10 @@ jobs:
       # binding for the bundler; npm does not add another platform's on its own
       # (npm/cli#4828). The runner's binding is added here, at the locked
       # bundler version.
-      - run: npm install --no-save --no-audit --no-fund "@rolldown/binding-linux-x64-gnu@$(node -p "require('rolldown/package.json').version")"
+      - run: |
+          npm install --no-save --no-audit --no-fund \
+            "@rolldown/binding-linux-x64-gnu@$(node -p "require('rolldown/package.json').version")" \
+            "lightningcss-linux-x64-gnu@$(node -p "require('lightningcss/package.json').version")"
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
