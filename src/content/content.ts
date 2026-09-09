@@ -80,7 +80,10 @@ function blockOf(node: Node): HTMLElement {
     if (isBlock(el)) {
       block ??= el;
       const text = el.innerText ?? el.textContent ?? '';
-      if (OPEN_RE.test(text)) return el;
+      // A verified Mark's opening marker is hidden, and hidden text is not in
+      // innerText: without the second test the climb would run past the post
+      // and stop at whatever container holds another post's visible marker.
+      if (OPEN_RE.test(text) || el.querySelector('[data-zoreal-marker="open"]')) return el;
       if (++climbed >= CLIMB_LIMIT || text.length > CLIMB_TEXT_LIMIT) break;
     }
     el = el.parentElement;
@@ -193,7 +196,7 @@ function hideMarkers(closingMarker: Text, host: HTMLElement): void {
   for (const marker of [opening, closingMarker]) {
     if (!marker || !marker.isConnected) continue;
     const span = document.createElement('span');
-    span.setAttribute('data-zoreal-marker', '');
+    span.setAttribute('data-zoreal-marker', marker === opening ? 'open' : 'close');
     span.style.display = 'none';
     marker.parentNode?.insertBefore(span, marker);
     span.append(marker);
