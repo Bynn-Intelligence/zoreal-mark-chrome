@@ -18,7 +18,7 @@ const processed = new WeakSet<Node>();
 type Render = (m: MarkSummary | null, error?: string) => void;
 const renders: Render[] = [];
 
-const OPEN_RE = /::ZOREAL-(SIGNED|DELEGATED)::/;
+const OPEN_RE = /::ZOREAL-(MARK|DELEGATED)::/;
 /** How far up, and how much text, the scanner will take in to pair a closing marker with its opening one. */
 const CLIMB_LIMIT = 8;
 const CLIMB_TEXT_LIMIT = 40_000;

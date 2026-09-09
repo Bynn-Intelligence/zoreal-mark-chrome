@@ -41,7 +41,7 @@ function json(res, status, body) {
 function demoPage(host) {
   const okPage = cases.find((c) => c.name === 'ok-page');
   const items = cases.filter((c) => c.pageUrl !== undefined).map((c) => {
-    const open = c.marker === 'delegated' ? '::ZOREAL-DELEGATED::' : '::ZOREAL-SIGNED::';
+    const open = c.marker === 'delegated' ? '::ZOREAL-DELEGATED::' : '::ZOREAL-MARK::';
     return `<li><div class="name">${esc(c.name)} <span class="exp">expects ${esc(c.expect.verdict)}${c.expect.failedStep ? ` at step ${c.expect.failedStep}` : ''}</span></div><p>${esc(open)} ${esc(c.text)} ::ZOREAL-SIGNATURE:${esc(c.id)}::</p></li>`;
   }).join('\n');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ZOREAL Mark demo</title>
@@ -56,7 +56,7 @@ function demoPage(host) {
 <textarea id="demo-box" placeholder="Write here, then use the sign control or the toolbar"></textarea>
 <h2>Posted over several lines</h2>
 <p>The same record as the first case, posted the way a platform renders blank lines: three paragraphs. It verifies the same, because surrounding spaces and line breaks are not part of the text.</p>
-<div id="multiline"><p>${esc(cases[0].marker === 'delegated' ? '::ZOREAL-DELEGATED::' : '::ZOREAL-SIGNED::')}</p><p></p><p>${esc(cases[0].text)}</p><p></p><p>::ZOREAL-SIGNATURE:${esc(cases[0].id)}::</p></div>
+<div id="multiline"><p>${esc(cases[0].marker === 'delegated' ? '::ZOREAL-DELEGATED::' : '::ZOREAL-MARK::')}</p><p></p><p>${esc(cases[0].text)}</p><p></p><p>::ZOREAL-SIGNATURE:${esc(cases[0].id)}::</p></div>
 <h2>Every conformance case</h2>
 <ul>${items}</ul>
 </body></html>`;

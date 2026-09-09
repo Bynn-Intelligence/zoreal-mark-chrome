@@ -64,7 +64,7 @@ async function renderHome(): Promise<void> {
   app.innerHTML = `${header()}
     <section><h2>On this page</h2>
       ${pageCard}
-      ${marks.length ? summaryHtml(marks) : pageCard ? '' : `<div class="card empty"><b>No Marks on this page.</b><br/>A Mark is text wrapped in <code>::ZOREAL-SIGNED::</code> and a signature marker. When one is here, its verdict appears in this list and in the toolbar badge, which a page cannot imitate.</div>`}
+      ${marks.length ? summaryHtml(marks) : pageCard ? '' : `<div class="card empty"><b>No Marks on this page.</b><br/>A Mark is text wrapped in <code>::ZOREAL-MARK::</code> and a signature marker. When one is here, its verdict appears in this list and in the toolbar badge, which a page cannot imitate.</div>`}
     </section>
     <section><h2>Sign what you are writing</h2>
       <div class="card sign" id="sign"><div class="skeleton" style="height:40px"></div></div>
@@ -237,7 +237,7 @@ async function runSignFlow(tab: chrome.tabs.Tab, target: SignTarget, text: strin
     if (s.status === 'complete') {
       const inserted = (await chrome.tabs.sendMessage(tab.id!, { type: 'insertMark', id: s.id, marker: 'signed' }).catch(() => ({ ok: false }))) as { ok: boolean };
       box.innerHTML = `<div class="done">${icon('badge-check')}<span>Signed. ${inserted.ok ? 'The Mark is in your text box; post it as it is.' : 'Copy the Mark below into your post.'}</span></div>
-        ${inserted.ok ? '' : `<div class="preview">::ZOREAL-SIGNED:: ${esc(text)} ::ZOREAL-SIGNATURE:${esc(s.id)}::</div>`}
+        ${inserted.ok ? '' : `<div class="preview">::ZOREAL-MARK:: ${esc(text)} ::ZOREAL-SIGNATURE:${esc(s.id)}::</div>`}
         <div class="meta">Record <a class="link" href="#" id="rec">${esc(s.id)}</a></div>`;
       document.getElementById('rec')!.addEventListener('click', async (e) => { e.preventDefault(); const st = await send<{ baseUrl: string }>({ type: 'getSettings' }); void chrome.tabs.create({ url: `${st.baseUrl}/mark/${s.id}` }); });
       return;

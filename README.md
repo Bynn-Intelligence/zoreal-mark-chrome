@@ -9,7 +9,7 @@ exactly this page, at exactly this time. The platform is not involved, cannot st
 and does not need to know ZOREAL exists.
 
 ```text
-::ZOREAL-SIGNED:: I was at the launch and the demo was real. ::ZOREAL-SIGNATURE:7QK39F2MXR84B5NPD4T6HW2A::
+::ZOREAL-MARK:: I was at the launch and the demo was real. ::ZOREAL-SIGNATURE:7QK39F2MXR84B5NPD4T6HW2A::
 ```
 
 This extension does three things:
