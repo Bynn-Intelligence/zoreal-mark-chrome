@@ -4,7 +4,7 @@ Sign what you post, anywhere, and let anyone verify it.
 
 A Mark is a comment, a post or a file wrapped in two markers and a short id, signed by
 the key in the holder's ZOREAL ID with a presence attestation. Anyone reading it, on any
-site, can verify that a live, chip-verified human vouched for exactly this text, on
+site, can verify that a real human, verified by ZOREAL, vouched for exactly this text, on
 exactly this page, at exactly this time. The platform is not involved, cannot strip it,
 and does not need to know ZOREAL exists.
 
@@ -34,7 +34,7 @@ nothing else. This section is kept true; if it says the service is not live, it 
 
 | Asserts | Proven by |
 |---|---|
-| A chip-verified human vouched for this text | A device signature under a content-signing certificate issued against a government document chip, countersigned by ZOREAL |
+| A human verified by ZOREAL vouched for this text | A device signature under a content-signing certificate issued against a government document chip, countersigned by ZOREAL |
 | A live human was present when it was signed, at the stated grade | A presence attestation bound to that signature |
 | It was signed for this page | The page URL is inside the signed payload |
 | It was signed at this time | An RFC 3161 timestamp over the record |
