@@ -3,7 +3,7 @@
  * developing the extension before the real record service exists.
  *
  *   GET  /mark/<id>                       the fixture record, JSON
- *   GET  /dev/anchors                     the fixture trust anchors (localhost only, see the options page)
+ *   GET  /pki/dev-anchors                 the fixture trust anchors (localhost only, see the options page)
  *   GET  /demo                            a page with one Mark per fixture case and a text box to sign
  *   POST /v1/zoreal/mark/orders           creates a pretend sign order
  *   GET  /v1/zoreal/mark/orders/<order>   walks through the hints, then completes with the fixture whose
@@ -69,7 +69,7 @@ createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': r.timestamp?.status === 'confirmed' ? 'public, max-age=31536000, immutable' : 'public, max-age=60' });
     return res.end(JSON.stringify(r));
   }
-  if (req.method === 'GET' && url.pathname === '/dev/anchors') return json(res, 200, anchors);
+  if (req.method === 'GET' && (url.pathname === '/pki/dev-anchors' || url.pathname === '/dev/anchors')) return json(res, 200, anchors);
   if (req.method === 'GET' && (url.pathname === '/demo' || url.pathname === '/')) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(demoPage(`http://${req.headers.host}`));

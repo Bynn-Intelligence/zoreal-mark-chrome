@@ -61,7 +61,7 @@ export class RecordService {
 
   /** Development only: the mock serves the fixture anchors. Never called for a production origin. */
   async fetchDevAnchors(): Promise<unknown> {
-    const res = await fetch(`${this.baseUrl}/dev/anchors`, { credentials: 'omit' });
+    const res = await fetch(`${this.baseUrl}/pki/dev-anchors`, { credentials: 'omit' });
     if (!res.ok) throw new Error(`no dev anchors: HTTP ${res.status}`);
     return res.json();
   }
