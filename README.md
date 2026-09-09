@@ -2,6 +2,15 @@
 
 Sign what you post, anywhere, and let anyone verify it.
 
+**A Mark is not a likelihood. It is proof.** Other tools estimate that a post is 99.9%
+likely to come from a human. A ZOREAL Mark says that a real human, verified by ZOREAL,
+stands behind this post, or it says nothing at all. It verifies, or it does not.
+
+**Human first. Identity when needed.** Sometimes you need to know a person is there.
+Sometimes you need to know who. Choose the question that fits the moment: a Mark is signed
+as a verified human, a pseudonym for that site and nothing more, or under the signer's
+legal name when the moment calls for a name.
+
 A Mark is a post, a comment, an article or a file wrapped in two markers and a short id,
 signed on the writer's phone with their ZOREAL ID. Anyone reading it, on any site, can
 verify that a real human, verified by ZOREAL, vouched for exactly this text, on exactly
