@@ -264,18 +264,10 @@ forum software that runs thousands of sites (Discourse, XenForo, phpBB, vBulleti
 domain at a time. The entries for TikTok, VK, Quora, Medium, Substack, Pinterest and
 Nextdoor were written from memory of those sites and need a check by someone on them.
 
-Before every commit, read added lines as a stranger would. Nothing in this repository
-references a private repository, an internal hostname, a local path, or an internal
-document. Engineering reasons stay; internal pointers go.
-
-```sh
-git diff --cached | grep -niE 'section [0-9]|docs/[0-9]|products/|/Users/|internal|roadmap|localhost:(3[01]|51[78])[0-9]{2}'
-```
-
-No emojis: icons are [Lucide](https://lucide.dev), inlined as SVG. No em-dashes. No remote
-code, fonts or analytics; the extension renders with the network off. Never write
-"chip-verified": what a Mark asserts is a real human verified by ZOREAL, and the chip is
-one piece of that evidence.
+Code contributions: open an issue first for anything beyond a fix, run `npm test` and
+`npm run typecheck`, and keep the extension as it is: no remote code, no third-party
+requests, no analytics. It renders with the network off and verifies with nothing but
+the record.
 
 ## Privacy, in one paragraph
 
