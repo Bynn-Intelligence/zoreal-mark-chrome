@@ -18,14 +18,40 @@ const processed = new WeakSet<Node>();
 type Render = (m: MarkSummary | null, error?: string) => void;
 const renders: Render[] = [];
 
+const OPEN_RE = /::ZOREAL-(SIGNED|DELEGATED)::/;
+/** How far up, and how much text, the scanner will take in to pair a closing marker with its opening one. */
+const CLIMB_LIMIT = 8;
+const CLIMB_TEXT_LIMIT = 40_000;
+
+function isBlock(el: HTMLElement): boolean {
+  const d = getComputedStyle(el).display;
+  return d === 'block' || d === 'list-item' || d === 'table-cell' || d === 'flex' || d === 'grid' || /^(P|DIV|LI|TD|ARTICLE|SECTION|BLOCKQUOTE|DD|DT|H[1-6])$/.test(el.tagName);
+}
+
+/**
+ * The element whose text holds the whole Mark.
+ *
+ * A Mark posted over several lines lands as several paragraphs on most
+ * platforms: the opening marker in one, the text in the next, the closing
+ * marker in a third. The nearest block around the closing marker then holds
+ * no opening marker, so the climb continues, block by block, until one does.
+ * Bounded, so a closing marker with no opening anywhere near it stops at a
+ * container the size of a post rather than at the page.
+ */
 function blockOf(node: Node): HTMLElement {
   let el: HTMLElement | null = node.parentElement;
+  let block: HTMLElement | null = null;
+  let climbed = 0;
   while (el && el !== document.body) {
-    const d = getComputedStyle(el).display;
-    if (d === 'block' || d === 'list-item' || d === 'table-cell' || d === 'flex' || d === 'grid' || /^(P|DIV|LI|TD|ARTICLE|SECTION|BLOCKQUOTE|DD|DT|H[1-6])$/.test(el.tagName)) return el;
+    if (isBlock(el)) {
+      block ??= el;
+      const text = el.innerText ?? el.textContent ?? '';
+      if (OPEN_RE.test(text)) return el;
+      if (++climbed >= CLIMB_LIMIT || text.length > CLIMB_TEXT_LIMIT) break;
+    }
     el = el.parentElement;
   }
-  return document.body;
+  return block ?? document.body;
 }
 
 function editable(el: Element | null): boolean {

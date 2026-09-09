@@ -5,6 +5,15 @@ header img { width: 24px; height: 24px; }
 header .title { font-weight: 600; letter-spacing: -0.02em; font-size: 15px; }
 header .spacer { flex: 1; }
 .list { display: flex; flex-direction: column; gap: 8px; }
+.summary { padding: 0; }
+.summary summary { list-style: none; cursor: pointer; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.summary summary::-webkit-details-marker { display: none; }
+.summary .rows { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+.summary .count { color: var(--ink-secondary); font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; }
+.summary .toggle { color: var(--ink-muted); font-size: 12px; }
+.summary[open] .toggle { display: none; }
+.summary .list { padding: 0 8px 8px; }
+.summary .list .item { border: 1px solid var(--hairline); border-radius: var(--r-inset); }
 .item { padding: 10px 12px; }
 .item .who { color: var(--ink-secondary); margin-top: 4px; font-size: 13px; }
 .item .meta { color: var(--ink-muted); margin-top: 2px; font-size: 12px; }

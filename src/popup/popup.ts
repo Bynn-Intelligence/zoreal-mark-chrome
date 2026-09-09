@@ -35,14 +35,36 @@ function itemHtml(m: MarkSummary, pageLevel = false): string {
   return `<div class="card item"><span class="verdict ${v.style}">${icon(v.icon)}<span>${esc(v.label)}</span></span>${who}${meta ? `<div class="meta">${esc(meta)}</div>` : ''}</div>`;
 }
 
+/**
+ * The Marks on the page, folded to one line per verdict with a count. A feed
+ * carries hundreds, and each already wears its own badge in the page; the
+ * full list opens on request and closes again.
+ */
+function summaryHtml(marks: MarkSummary[]): string {
+  const groups = new Map<string, { view: ReturnType<typeof verdictView>; items: MarkSummary[] }>();
+  for (const m of marks) {
+    const v = verdictView(m);
+    const g = groups.get(v.label) ?? { view: v, items: [] };
+    g.items.push(m);
+    groups.set(v.label, g);
+  }
+  const rows = [...groups.values()].map((g) => `<span class="verdict ${g.view.style}">${icon(g.view.icon)}<span>${esc(g.view.label)}</span></span><span class="count">${g.items.length}</span>`).join('');
+  const noun = marks.length === 1 ? 'Mark' : 'Marks';
+  return `<details class="card summary">
+      <summary><div class="rows">${rows}</div><span class="toggle">${marks.length} ${noun}, show all</span></summary>
+      <div class="list">${marks.map((m) => itemHtml(m)).join('')}</div>
+    </details>`;
+}
+
 async function renderHome(): Promise<void> {
   const tab = await activeTab();
   const state = tab?.id !== undefined ? await send<TabState | null>({ type: 'tabState', tabId: tab.id }) : null;
   const marks = state?.marks ?? [];
-  const list = [...(state?.page ? [itemHtml(state.page, true)] : []), ...marks.map((m) => itemHtml(m))].join('');
+  const pageCard = state?.page ? itemHtml(state.page, true) : '';
   app.innerHTML = `${header()}
     <section><h2>On this page</h2>
-      ${list || `<div class="card empty"><b>No Marks on this page.</b><br/>A Mark is text wrapped in <code>::ZOREAL-SIGNED::</code> and a signature marker. When one is here, its verdict appears in this list and in the toolbar badge, which a page cannot imitate.</div>`}
+      ${pageCard}
+      ${marks.length ? summaryHtml(marks) : pageCard ? '' : `<div class="card empty"><b>No Marks on this page.</b><br/>A Mark is text wrapped in <code>::ZOREAL-SIGNED::</code> and a signature marker. When one is here, its verdict appears in this list and in the toolbar badge, which a page cannot imitate.</div>`}
     </section>
     <section><h2>Sign what you are writing</h2>
       <div class="card sign" id="sign"><div class="skeleton" style="height:40px"></div></div>
