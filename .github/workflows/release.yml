@@ -45,6 +45,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Fetch git dependencies over HTTPS
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - run: npm ci
       - name: Bump the version, commit and tag
         if: github.event_name == 'workflow_dispatch'
