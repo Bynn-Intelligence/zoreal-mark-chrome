@@ -70,8 +70,8 @@ Verify ZOREAL Marks on the pages the user reads, and create one for text the use
 
 ## Privacy policy
 
-Publish at `https://zoreal.com/mark/extension-privacy`; the text is the "Privacy, in one
-paragraph" section of the README, expanded with the disclosure above.
+`https://zoreal.com/privacy/mark-extension`, published on the site beside the general
+ZOREAL Privacy Notice; the matching terms are at `https://zoreal.com/terms/mark-extension`.
 
 ## Assets
 
