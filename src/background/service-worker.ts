@@ -10,7 +10,34 @@ import { isLocalDev, loadSettings, saveSettings } from '../shared/settings.js';
  * and returns the verdict. Per-tab state feeds the toolbar badge and the popup.
  */
 
-const tabs = new Map<number, TabState>();
+/**
+ * Per-tab state lives in session storage, not in a variable. Chrome stops an
+ * idle service worker after half a minute and starts a fresh one on the next
+ * message, and a variable does not survive that: the popup then opened on a
+ * page full of badges and said there were no Marks on it. Session storage
+ * lasts until the browser closes and is cleared per tab on navigation.
+ */
+const store = chrome.storage.session;
+const log = (...args: unknown[]): void => console.debug('[ZOREAL Mark]', ...args);
+
+async function getTab(tabId: number): Promise<TabState | null> {
+  const key = `tab:${tabId}`;
+  return ((await store.get(key))[key] as TabState | undefined) ?? null;
+}
+async function setTab(tabId: number, state: TabState): Promise<void> {
+  await store.set({ [`tab:${tabId}`]: state });
+}
+async function clearTab(tabId: number): Promise<void> {
+  await store.remove([`tab:${tabId}`, `frame:${tabId}`]);
+}
+/** The frame that last held the cursor in an editable box, per tab. */
+async function getFrame(tabId: number): Promise<number> {
+  const key = `frame:${tabId}`;
+  return ((await store.get(key))[key] as number | undefined) ?? 0;
+}
+async function setFrame(tabId: number, frameId: number): Promise<void> {
+  await store.set({ [`frame:${tabId}`]: frameId });
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: 'zoreal-sign', title: 'Sign this with ZOREAL Mark', contexts: ['editable'] });
@@ -42,17 +69,15 @@ async function ensureContent(tabId: number): Promise<boolean> {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== 'zoreal-sign') return;
   // The menu knows which frame was right-clicked; the popup asks that one.
-  if (tab?.id !== undefined) focusedFrames.set(tab.id, info.frameId ?? 0);
+  if (tab?.id !== undefined) void setFrame(tab.id, info.frameId ?? 0);
   void openPopup();
 });
 
-/** The frame that last held the cursor in an editable box, per tab. */
-const focusedFrames = new Map<number, number>();
-
-chrome.tabs.onRemoved.addListener((tabId) => { tabs.delete(tabId); focusedFrames.delete(tabId); });
+chrome.tabs.onRemoved.addListener((tabId) => { void clearTab(tabId); });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status === 'loading') {
-    tabs.delete(tabId);
+    log('tab', tabId, 'loading; state cleared');
+    void clearTab(tabId);
     void chrome.action.setBadgeText({ tabId, text: '' });
   }
 });
@@ -75,11 +100,12 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
         const summary = await verifyOne(m, pageUrl);
         results.push({ ...summary, text: m.text, where: { frameId: sender.frameId ?? 0, ordinal: m.ordinal } });
       }
+      log('verify', msg.marks.length, 'mark(s) from tab', tabId, 'frame', sender.frameId, 'on', pageUrl, '->', results.map((r) => r.verdict).join(', '));
       if (tabId !== undefined) {
-        const prev = tabs.get(tabId);
+        const prev = await getTab(tabId);
         const merged = mergeMarks(prev?.marks ?? [], results);
-        const state: TabState = { url: pageUrl, marks: merged, page: prev?.page, updatedAt: Date.now() };
-        tabs.set(tabId, state);
+        const state: TabState = { url: pageUrl, marks: merged, page: prev?.page ?? undefined, updatedAt: Date.now() };
+        await setTab(tabId, state);
         await updateBadge(tabId, state);
       }
       return { results };
@@ -87,27 +113,28 @@ async function handle(msg: Request, sender: chrome.runtime.MessageSender): Promi
     case 'verifyPage': {
       const tabId = sender.tab?.id;
       const page = await verifyOne({ marker: 'signed', text: msg.text, id: msg.id }, msg.pageUrl);
+      log('verifyPage', msg.id, 'from tab', tabId, '->', page.verdict);
       if (tabId !== undefined) {
-        const prev = tabs.get(tabId);
+        const prev = await getTab(tabId);
         const state: TabState = { url: msg.pageUrl, marks: prev?.marks ?? [], page, updatedAt: Date.now() };
-        tabs.set(tabId, state);
+        await setTab(tabId, state);
         await updateBadge(tabId, state);
       }
       return { result: page };
     }
     case 'tabState': {
       const tabId = msg.tabId ?? (await activeTabId());
-      return tabId === undefined ? null : (tabs.get(tabId) ?? null);
+      return tabId === undefined ? null : getTab(tabId);
     }
     case 'openPopupForSigning':
       return { opened: await openPopup() };
     case 'ensureContent':
       return { ok: await ensureContent(msg.tabId) };
     case 'editableFocused':
-      if (sender.tab?.id !== undefined) focusedFrames.set(sender.tab.id, sender.frameId ?? 0);
+      if (sender.tab?.id !== undefined) await setFrame(sender.tab.id, sender.frameId ?? 0);
       return { ok: true };
     case 'signFrame':
-      return { frameId: focusedFrames.get(msg.tabId) ?? 0 };
+      return { frameId: await getFrame(msg.tabId) };
     case 'createOrder': {
       const s = await loadSettings();
       return new RecordService(s.baseUrl, s.apiPrefix).createOrder(msg.body);

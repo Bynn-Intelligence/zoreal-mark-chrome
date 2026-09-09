@@ -42,9 +42,13 @@ function isInvalidated(e: unknown): boolean {
 function retire(): void {
   if (retired) return;
   retired = true;
+  log('retired: the extension was reloaded or removed; this copy of the script stops here');
   try { observer.disconnect(); } catch { /* not created yet */ }
 }
 const processed = new WeakSet<Node>();
+const log = (...args: unknown[]): void => console.debug('[ZOREAL Mark]', ...args);
+/** Each badge's closing-marker text node, so a badge a framework removed can be put back after it. */
+const closerOfHost = new Map<HTMLElement, Text>();
 type Render = (m: MarkSummary | null, error?: string) => void;
 const renders: Render[] = [];
 
@@ -134,6 +138,7 @@ function scan(root: Node = document.body): void {
       found.push({ mark: marks[i]!, node: closer });
     }
   }
+  log('scan', root === document.body ? 'document' : (root as Element).tagName ?? root.nodeName, 'found', found.length, 'mark(s)');
   if (found.length === 0) return;
   // One badge per occurrence, and results come back in the order sent: the
   // same id can appear several times on a page with different text around it
@@ -244,6 +249,7 @@ function placeBadge(node: Text, mark: FoundMark, ordinal: number): Render {
   if (closingMarker) processed.add(closingMarker);
   const host = document.createElement('span');
   host.setAttribute('data-zoreal-mark-host', mark.id);
+  closerOfHost.set(host, closingMarker ?? node);
   host.setAttribute('data-zoreal-ordinal', String(ordinal));
   hostsByOrdinal.set(ordinal, host);
   const shadow = host.attachShadow({ mode: 'closed' });
@@ -518,16 +524,60 @@ chrome.runtime.onMessage.addListener((msg: ContentRequest, _sender, sendResponse
 
 // ---------- lifecycle ----------
 let pending: number | undefined;
+/**
+ * Batches of DOM changes, 400 ms apart. Three kinds matter:
+ *
+ *   added nodes        new content: scan it.
+ *   changed text       a framework reusing a text node and rewriting its
+ *                      value, which is how a list re-renders when the reader
+ *                      comes back to it. The node was processed once; it is
+ *                      forgotten and its block scanned again.
+ *   removed badges     a framework that owns the paragraph may drop the span
+ *                      we put in it on its next render. The closing node it
+ *                      belonged to is forgotten so the next scan badges it
+ *                      again.
+ */
+const batch: MutationRecord[] = [];
 const observer = new MutationObserver((records) => {
-  if (pending !== undefined || retired) return;
+  if (retired) return;
+  batch.push(...records);
+  if (pending !== undefined) return;
   pending = window.setTimeout(() => {
     pending = undefined;
-    for (const r of records) for (const n of r.addedNodes) if (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.TEXT_NODE) scan(n.nodeType === Node.TEXT_NODE ? (n.parentElement ?? document.body) : n);
+    const records = batch.splice(0);
+    const roots = new Set<Node>();
+    let rewritten = 0;
+    for (const r of records) {
+      for (const n of r.addedNodes) if (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.TEXT_NODE) roots.add(n.nodeType === Node.TEXT_NODE ? (n.parentElement ?? document.body) : n);
+      if (r.type === 'characterData') {
+        // Rewritten in place, whether or not it held a Mark before.
+        if (processed.has(r.target)) { processed.delete(r.target); rewritten++; }
+        roots.add(r.target.parentElement ?? document.body);
+      }
+    }
+    // A badge the page dropped while its closing marker stayed goes straight
+    // back after that marker, verdict and all; no rescan, no refetch. When the
+    // marker went too, the page replaced the paragraph, and the new nodes are
+    // in `roots` already.
+    let restored = 0;
+    for (const [host, closer] of closerOfHost) {
+      if (host.isConnected) continue;
+      if (!closer.isConnected) { closerOfHost.delete(host); continue; }
+      const anchor: Node = closer.parentElement?.closest('[data-zoreal-marker]') ?? closer;
+      anchor.parentNode?.insertBefore(host, anchor.nextSibling);
+      restored++;
+    }
+    log('mutations:', records.length, 'record(s),', roots.size, 'root(s) to scan,', rewritten, 'rewritten text node(s),', restored, 'badge(s) put back after the page removed them');
+    for (const root of roots) if (root.isConnected) scan(root);
     attachSignControls();
   }, 400);
 });
 
+log('content script running in', window.top === window ? 'the top document' : 'a frame', location.href);
 scan();
 scanPageMark();
 attachSignControls();
 observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+// A page restored from the back/forward cache comes back with this script
+// intact; nothing changed while it was away, and a scan costs nothing.
+window.addEventListener('pageshow', (e) => { if (e.persisted && !retired) { log('restored from the back/forward cache; rescanning'); scan(); } });
