@@ -62,8 +62,9 @@ trusted.
 Built and exercised end to end: real Marks have been signed from a phone through this
 extension, from a plain text box and from an editor embedded in an iframe, and verified
 with the shipped verifier. Fifty-one conformance cases render their expected verdicts in
-a real Chrome on every build. Not yet: the Chrome Web Store listing, the production
-record service keys, and the verifier package on npm. This section is kept true.
+a real Chrome on every build. The verifier it embeds is `@zoreal/mark-verify` from npm. Not yet: the Chrome Web Store
+listing, which is in review, and the production record service keys. This section is kept
+true.
 
 ## What a Mark asserts
 
@@ -237,8 +238,6 @@ verified Mark hides its markers. It needs `puppeteer-core`
 `--load-extension`, which branded Google Chrome no longer does since version 137: point
 `CHROME` at Chrome for Testing or Chromium. Set `E2E_SCREENSHOTS=0` to skip the
 screenshots.
-
-Until `@zoreal/mark-verify` is on npm, link it from a local checkout with `npm link`.
 
 ### Releasing
 
